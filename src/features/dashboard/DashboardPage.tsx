@@ -122,7 +122,14 @@ export function DashboardPage() {
 
           {byCategory.length > 0 && (
             <section className="mt-8">
-              <h2 className="text-ink text-base font-semibold">Gasto por categoría</h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-ink text-base font-semibold">
+                  Gasto por categoría
+                </h2>
+                <Link to="/inflacion" className="text-ink-secondary text-sm underline">
+                  Ver inflación
+                </Link>
+              </div>
               <div className="border-border bg-surface-raised mt-3 rounded-lg border p-4">
                 <CategoryBreakdown data={byCategory} currency={currency} />
               </div>
