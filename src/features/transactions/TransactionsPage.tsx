@@ -4,18 +4,12 @@ import { useLocation, useNavigate } from 'react-router'
 import { Button } from '@/components/Button'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
-import { useCurrentUserId } from '@/features/auth/SessionContext'
 import { useCategories } from '@/features/categories/useCategories'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import { endOfMonth, startOfMonth, todayIso } from '@/lib/dates'
 import { TransactionForm } from './TransactionForm'
 import { TransactionList } from './TransactionList'
-import {
-  ExpensesQuery,
-  IncomesQuery,
-  RemoveExpenseMutation,
-  RemoveIncomeMutation,
-} from './transactions.queries'
+import { RemoveExpenseMutation, RemoveIncomeMutation } from './transactions.queries'
 import type { Transaction } from './types'
 import { useTransactions, type TransactionsScope } from './useTransactions'
 
@@ -26,7 +20,6 @@ const SCOPES: { value: TransactionsScope; label: string }[] = [
 ]
 
 export function TransactionsPage() {
-  const userId = useCurrentUserId()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -50,10 +43,9 @@ export function TransactionsPage() {
     categoryId: categoryId || undefined,
   })
 
-  const refetchQueries = [ExpensesQuery, IncomesQuery].map((query) => ({
-    query,
-    variables: { userId, filter: {} },
-  }))
+  // Por NOMBRE de operación: refresca la lista con el filtro activo, no una
+  // entrada de caché `filter: {}` que nadie observa (ver TransactionForm).
+  const refetchQueries = ['Expenses', 'Incomes']
   const [removeExpense] = useMutation(RemoveExpenseMutation, { refetchQueries })
   const [removeIncome] = useMutation(RemoveIncomeMutation, { refetchQueries })
 

@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Button } from '@/components/Button'
 import { Field } from '@/components/Field'
-import { Select } from '@/components/Select'
 import {
   buildArticleInput,
   computeUnitPrice,
@@ -13,15 +12,12 @@ import {
 } from '@/features/articles/article'
 import { ArticleField } from '@/features/articles/ArticleField'
 import { useCurrentUserId } from '@/features/auth/SessionContext'
-import { useCategories } from '@/features/categories/useCategories'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import { todayIso } from '@/lib/dates'
 import { formatAmount } from '@/lib/money'
 import {
   CreateExpenseMutation,
   CreateIncomeMutation,
-  ExpensesQuery,
-  IncomesQuery,
   UpdateExpenseMutation,
   UpdateIncomeMutation,
 } from './transactions.queries'
@@ -86,18 +82,17 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
   const isIncome = kind === 'INCOME'
   const isEditing = transaction != null
   const [formError, setFormError] = useState<string | null>(null)
-
-  const { tree, loading: loadingCategories } = useCategories(kind)
   const [article, setArticle] = useState<ArticleSelection>(() =>
     initialArticleSelection(transaction),
   )
 
-  // Tras crear o editar hay que refrescar las listas: la caché no puede saber
-  // en qué filtros encaja un movimiento nuevo.
-  const refetchQueries = [ExpensesQuery, IncomesQuery].map((query) => ({
-    query,
-    variables: { userId, filter: {} },
-  }))
+  // Tras crear o editar hay que refrescar las listas. Se refresca POR NOMBRE de
+  // operación, no con variables fijas: la lista visible se consulta con el filtro
+  // activo (from/to/categoría), que la caché indexa por keyArgs; refrescar
+  // `filter: {}` actualizaría una entrada que nadie observa y la pantalla no
+  // cambiaría. El nombre refresca todas las instancias activas, sea cual sea su
+  // filtro.
+  const refetchQueries = ['Expenses', 'Incomes']
 
   const [createExpense] = useMutation(CreateExpenseMutation, { refetchQueries })
   const [createIncome] = useMutation(CreateIncomeMutation, { refetchQueries })
@@ -260,23 +255,6 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
         error={errors.occurredOn?.message}
         {...register('occurredOn')}
       />
-
-      <Select
-        label="Categoría (opcional)"
-        disabled={loadingCategories}
-        error={errors.categoryId?.message}
-        {...register('categoryId')}
-      >
-        <option value="">Sin categoría</option>
-        {tree.map(({ category, depth }) => (
-          <option key={category.id} value={category.id}>
-            {/* Sangría con espacios finos: un <select> nativo no anida. */}
-            {depth > 0 ? '  ' : ''}
-            {category.icon ? `${category.icon} ` : ''}
-            {category.name}
-          </option>
-        ))}
-      </Select>
 
       {/* El artículo y la cantidad son exclusivos de gastos: un ingreso no
           compra nada del catálogo. */}
