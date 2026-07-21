@@ -1,10 +1,30 @@
 import { NavLink, Outlet } from 'react-router'
 import { NAV_ITEMS } from './navigation'
 
+function PlusIcon({ className }: { className: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  )
+}
+
 /**
  * Un solo layout para las dos formas:
- *   - móvil: tab bar inferior fija + FAB, todo al alcance del pulgar;
- *   - `lg:` en adelante: sidebar lateral fija y el FAB pasa a la cabecera.
+ *   - móvil: tab bar inferior fija + FAB flotante, al alcance del pulgar;
+ *   - `lg:` en adelante: sidebar lateral fija con la acción principal dentro.
+ *
+ * En desktop la acción va EN EL FLUJO, dentro de la sidebar. Antes era el mismo
+ * botón `fixed` recolocado a la esquina superior derecha, y ahí tapaba los
+ * filtros de periodo de las páginas, que viven justo en esa esquina.
  */
 export function AppLayout() {
   return (
@@ -12,14 +32,18 @@ export function AppLayout() {
       <SidebarNav />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* pb deja hueco para la tab bar y el inset inferior de iOS. */}
-        <main className="flex-1 pb-[calc(4.5rem+var(--spacing-safe-bottom))] lg:pb-8">
+        {/*
+         * El padding inferior tiene que despejar la tab bar (4.5rem) Y el FAB,
+         * que flota por encima de ella (3.5rem más un margen). Con solo el alto
+         * de la tab bar, la última fila de una lista queda bajo el botón.
+         */}
+        <main className="flex-1 pb-[calc(9rem+var(--spacing-safe-bottom))] lg:pb-8">
           <Outlet />
         </main>
       </div>
 
       <TabBar />
-      <AddExpenseButton />
+      <AddExpenseFab />
     </div>
   )
 }
@@ -31,6 +55,19 @@ function SidebarNav() {
       className="border-border bg-surface-raised hidden w-60 shrink-0 border-r lg:sticky lg:top-0 lg:block lg:h-dvh"
     >
       <p className="text-ink px-5 py-6 text-base font-semibold">Finanzas</p>
+
+      {/* La acción principal, dentro del flujo de la sidebar: no puede tapar el
+          contenido de la página como hacía el FAB reposicionado. */}
+      <div className="px-3 pb-4">
+        <NavLink
+          to="/movimientos/nuevo"
+          className="bg-ink text-surface flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium hover:opacity-90"
+        >
+          <PlusIcon className="size-4" />
+          Registrar gasto
+        </NavLink>
+      </div>
+
       <ul className="flex flex-col gap-1 px-3">
         {NAV_ITEMS.map((item) => (
           <li key={item.to}>
@@ -86,26 +123,19 @@ function TabBar() {
 
 /**
  * Registrar un gasto es la acción más frecuente, así que tiene botón propio.
- * En móvil flota sobre la tab bar; en desktop se ancla arriba a la derecha.
+ *
+ * Solo móvil (`lg:hidden`): flota sobre la tab bar, al alcance del pulgar. En
+ * desktop esta acción vive dentro de la sidebar, en el flujo, para no tapar el
+ * contenido de la página.
  */
-function AddExpenseButton() {
+function AddExpenseFab() {
   return (
     <NavLink
       to="/movimientos/nuevo"
-      className="bg-ink text-surface fixed right-4 bottom-[calc(4.5rem+var(--spacing-safe-bottom))] z-20 flex size-14 items-center justify-center rounded-full shadow-lg lg:top-6 lg:right-6 lg:bottom-auto lg:size-auto lg:gap-2 lg:rounded-lg lg:px-4 lg:py-2.5 lg:text-sm lg:font-medium lg:shadow-none"
+      aria-label="Registrar gasto"
+      className="bg-ink text-surface fixed right-4 bottom-[calc(4.5rem+var(--spacing-safe-bottom))] z-20 flex size-14 items-center justify-center rounded-full shadow-lg lg:hidden"
     >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        aria-hidden="true"
-        className="size-6 lg:size-4"
-      >
-        <path d="M12 5v14M5 12h14" />
-      </svg>
-      <span className="sr-only lg:not-sr-only">Registrar gasto</span>
+      <PlusIcon className="size-6" />
     </NavLink>
   )
 }
