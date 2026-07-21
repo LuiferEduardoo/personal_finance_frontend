@@ -31,6 +31,11 @@ const CategoriesPage = lazy(() =>
     default: module.CategoriesPage,
   })),
 )
+const ProductsPage = lazy(() =>
+  import('@/features/products/ProductsPage').then((module) => ({
+    default: module.ProductsPage,
+  })),
+)
 const InflationPage = lazy(() =>
   import('@/features/inflation/InflationPage').then((module) => ({
     default: module.InflationPage,
@@ -93,6 +98,14 @@ export const router = createBrowserRouter([
             element: (
               <Lazy>
                 <TransactionsPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/productos',
+            element: (
+              <Lazy>
+                <ProductsPage />
               </Lazy>
             ),
           },

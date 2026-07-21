@@ -89,7 +89,14 @@ Categorías, gastos e ingresos **no** están migrados al token todavía: reciben
 - **Inflación**: los meses sin gastos **no aparecen** en la serie, y `monthlyRate` / `annualRate` son `null` cuando no hay periodo de comparación. Los gráficos deben tolerar huecos y nulos, no dibujar un 0 inventado. Mide la variación del gasto total, que se mueve por precios **y** por cantidad consumida — etiquetarlo así en la UI para no confundirlo con el IPC.
 - **Ciclo de inventario**: `registerProductPurchase` → abre ciclo → `inStock: true`; `markProductDepleted` → cierra el ciclo, calcula `daysLasted` y **añade el producto a la lista de compras** (`autoAdded`) → `inStock: false`. Solo puede haber un ciclo abierto por producto; `depletedOn: null` es el ciclo en curso.
 - `registerProductPurchase` acepta `productId` **o** `newProduct`, nunca ambos ni ninguno (`BAD_REQUEST`). En la UI: un selector de catálogo con opción "crear producto nuevo", excluyentes entre sí.
-- `markProductDepleted` sobre un producto sin ciclo abierto falla → deshabilitar el botón cuando `inStock` sea falso.
+- `markProductDepleted` sobre un producto sin ciclo abierto falla con `BAD_REQUEST` ("El producto no tiene un ciclo de consumo abierto", verificado) → deshabilitar el botón cuando `inStock` sea falso.
+- **`purchasedOn` es obligatorio** en `registerProductPurchase`, pese a que la documentación de la API lo omite en el ejemplo de `newProduct`. Sin él, la petición falla con `GRAPHQL_VALIDATION_FAILED` antes incluso de validar el XOR.
+- **`totalPrice` es nullable**: se puede registrar una compra sin `unitPrice`. Mostrar "—", nunca 0.
+
+> **La lista de compras no está expuesta.** El backend la mantiene (`markProductDepleted` añade el ítem como `autoAdded` y crea la lista si no existe), pero **no hay ninguna query en el esquema para leerla** — comprobado por introspección: las únicas queries son `categories`, `category`, `consumptionCycles`, `expense`, `expenseInflation`, `expenses`, `health`, `income`, `incomes`, `me`, `product`, `productPurchases`, `productStats`, `products`.
+>
+> Mientras siga así, la sección "Por reponer" se deriva en cliente de `isConsumable && !inStock`, que da la misma información desde el punto de vista del usuario. Si el backend expone la lista real (con `autoAdded` y el vínculo a la compra), hay que sustituir esa derivación por la query.
+
 - `productStats.estimatedDepletionDate` es una **estimación** (promedio de duración sobre el ciclo abierto); presentarla como tal.
 
 ### Errores
