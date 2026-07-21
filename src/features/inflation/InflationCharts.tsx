@@ -22,6 +22,13 @@ export type InflationPoint = {
   annualRate?: number | null
 }
 
+/** Lo mínimo que necesita RateChart: sirve tanto para la variación de gasto
+ *  como para el índice de precios. */
+export type RatePoint = {
+  period: string
+  monthlyRate?: number | null
+}
+
 /**
  * DOS gráficos, no uno con dos ejes.
  *
@@ -86,7 +93,7 @@ export function TotalChart({
   )
 }
 
-export function RateChart({ data }: { data: InflationPoint[] }) {
+export function RateChart({ data }: { data: RatePoint[] }) {
   const theme = useChartTheme()
 
   return (

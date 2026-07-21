@@ -16,6 +16,11 @@ function transaction(overrides: Partial<Transaction>): Transaction {
     categoryId: null,
     categoryName: null,
     categoryIcon: null,
+    articleId: null,
+    articleName: null,
+    articleType: null,
+    quantity: null,
+    unitPrice: null,
     ...overrides,
   }
 }

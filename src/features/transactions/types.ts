@@ -1,4 +1,8 @@
-import type { ExpensesQuery, IncomesQuery } from '@/graphql/generated/graphql'
+import type {
+  ArticleType,
+  ExpensesQuery,
+  IncomesQuery,
+} from '@/graphql/generated/graphql'
 import type { MoneyDirection } from '@/lib/money'
 
 export type Expense = ExpensesQuery['expenses'][number]
@@ -25,6 +29,12 @@ export type Transaction = {
   categoryId: string | null
   categoryName: string | null
   categoryIcon: string | null
+  /** Artículo vinculado y cantidad. Solo gastos; en ingresos van en null. */
+  articleId: string | null
+  articleName: string | null
+  articleType: ArticleType | null
+  quantity: number | null
+  unitPrice: number | null
 }
 
 export function directionOf(kind: Transaction['kind']): MoneyDirection {
@@ -45,6 +55,11 @@ export function expenseToTransaction(expense: Expense): Transaction {
     categoryId: expense.categoryId ?? null,
     categoryName: expense.category?.name ?? null,
     categoryIcon: expense.category?.icon ?? null,
+    articleId: expense.articleId ?? null,
+    articleName: expense.article?.name ?? null,
+    articleType: expense.article?.type ?? null,
+    quantity: expense.quantity ?? null,
+    unitPrice: expense.unitPrice ?? null,
   }
 }
 
@@ -62,5 +77,11 @@ export function incomeToTransaction(income: Income): Transaction {
     categoryId: income.categoryId ?? null,
     categoryName: income.category?.name ?? null,
     categoryIcon: income.category?.icon ?? null,
+    // Los ingresos no llevan artículo.
+    articleId: null,
+    articleName: null,
+    articleType: null,
+    quantity: null,
+    unitPrice: null,
   }
 }

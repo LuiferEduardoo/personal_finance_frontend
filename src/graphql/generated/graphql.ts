@@ -18,6 +18,76 @@ export type Scalars = {
   DateTime: { input: string; output: string; }
 };
 
+export type Article = {
+  __typename?: 'Article';
+  brand?: Maybe<Scalars['String']['output']>;
+  category?: Maybe<Category>;
+  categoryId?: Maybe<Scalars['ID']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  isActive: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  notes?: Maybe<Scalars['String']['output']>;
+  type: ArticleType;
+  unit?: Maybe<UnitOfMeasure>;
+  updatedAt: Scalars['DateTime']['output'];
+  userId: Scalars['ID']['output'];
+};
+
+export type ArticleInflationFilterInput = {
+  /** Un solo artículo */
+  articleId?: InputMaybe<Scalars['ID']['input']>;
+  /** Una categoría (incluye subcategorías) */
+  categoryId?: InputMaybe<Scalars['ID']['input']>;
+  /** Mes inicial YYYY-MM (inclusive) */
+  from?: InputMaybe<Scalars['String']['input']>;
+  /** Mes final YYYY-MM (inclusive) */
+  to?: InputMaybe<Scalars['String']['input']>;
+  type?: InputMaybe<ArticleType>;
+};
+
+/** Inflación real (índice de precios) sobre los artículos comprados. NO confundir con expenseInflation (variación de gasto). */
+export type ArticleInflationReport = {
+  __typename?: 'ArticleInflationReport';
+  /** Desglose por artículo */
+  articles: Array<ArticlePriceSeries>;
+  /** Promedio de las inflaciones mensuales del índice agregado */
+  averageMonthlyRate?: Maybe<Scalars['Float']['output']>;
+  /** Desglose por categoría */
+  categories: Array<CategoryPriceSeries>;
+  latestAnnualRate?: Maybe<Scalars['Float']['output']>;
+  latestMonthlyRate?: Maybe<Scalars['Float']['output']>;
+  /** Índice agregado sobre todos los artículos */
+  points: Array<InflationIndexPoint>;
+};
+
+/** Precio de un artículo en un mes y su variación */
+export type ArticlePricePoint = {
+  __typename?: 'ArticlePricePoint';
+  annualRate?: Maybe<Scalars['Float']['output']>;
+  /** Precio unitario promedio del mes */
+  avgUnitPrice: Scalars['Float']['output'];
+  monthlyRate?: Maybe<Scalars['Float']['output']>;
+  period: Scalars['String']['output'];
+  /** Cantidad comprada en el mes */
+  quantity: Scalars['Float']['output'];
+};
+
+/** Serie de precios e inflación de un artículo */
+export type ArticlePriceSeries = {
+  __typename?: 'ArticlePriceSeries';
+  articleId: Scalars['ID']['output'];
+  latestAnnualRate?: Maybe<Scalars['Float']['output']>;
+  latestMonthlyRate?: Maybe<Scalars['Float']['output']>;
+  name: Scalars['String']['output'];
+  points: Array<ArticlePricePoint>;
+};
+
+export type ArticleType =
+  | 'OTHER'
+  | 'PRODUCT'
+  | 'SERVICE';
+
 export type AuthPayload = {
   __typename?: 'AuthPayload';
   /** JWT de acceso (20 minutos) */
@@ -51,6 +121,16 @@ export type Category = {
   userId?: Maybe<Scalars['ID']['output']>;
 };
 
+/** Índice de inflación de una categoría (roll-up) */
+export type CategoryPriceSeries = {
+  __typename?: 'CategoryPriceSeries';
+  categoryId?: Maybe<Scalars['ID']['output']>;
+  categoryName?: Maybe<Scalars['String']['output']>;
+  latestAnnualRate?: Maybe<Scalars['Float']['output']>;
+  latestMonthlyRate?: Maybe<Scalars['Float']['output']>;
+  points: Array<InflationIndexPoint>;
+};
+
 export type ConsumptionCycle = {
   __typename?: 'ConsumptionCycle';
   createdAt: Scalars['DateTime']['output'];
@@ -65,6 +145,16 @@ export type ConsumptionCycle = {
   startedOn: Scalars['String']['output'];
 };
 
+export type CreateArticleInput = {
+  brand?: InputMaybe<Scalars['String']['input']>;
+  categoryId?: InputMaybe<Scalars['ID']['input']>;
+  name: Scalars['String']['input'];
+  notes?: InputMaybe<Scalars['String']['input']>;
+  /** producto / servicio / otro */
+  type?: InputMaybe<ArticleType>;
+  unit?: InputMaybe<UnitOfMeasure>;
+};
+
 export type CreateCategoryInput = {
   color?: InputMaybe<Scalars['String']['input']>;
   icon?: InputMaybe<Scalars['String']['input']>;
@@ -76,15 +166,21 @@ export type CreateCategoryInput = {
 
 export type CreateExpenseInput = {
   amount: Scalars['Float']['input'];
+  /** Artículo existente comprado en este gasto */
+  articleId?: InputMaybe<Scalars['ID']['input']>;
   categoryId?: InputMaybe<Scalars['ID']['input']>;
   currency?: InputMaybe<Scalars['String']['input']>;
   description: Scalars['String']['input'];
   exchangeRate?: InputMaybe<Scalars['Float']['input']>;
   merchant?: InputMaybe<Scalars['String']['input']>;
+  /** Crear el artículo (producto/servicio/otro) en el mismo gasto. Si es tipo producto, entra al inventario. */
+  newArticle?: InputMaybe<CreateArticleInput>;
   notes?: InputMaybe<Scalars['String']['input']>;
   /** Fecha del gasto (YYYY-MM-DD) */
   occurredOn: Scalars['String']['input'];
   paymentMethodId?: InputMaybe<Scalars['ID']['input']>;
+  /** Cantidad del artículo comprada */
+  quantity?: InputMaybe<Scalars['Float']['input']>;
   receiptUrl?: InputMaybe<Scalars['String']['input']>;
   recurrence?: InputMaybe<Recurrence>;
   userId: Scalars['ID']['input'];
@@ -107,6 +203,8 @@ export type CreateIncomeInput = {
 };
 
 export type CreateProductInput = {
+  /** Artículo (catálogo general) al que pertenece este producto */
+  articleId?: InputMaybe<Scalars['ID']['input']>;
   barcode?: InputMaybe<Scalars['String']['input']>;
   brand?: InputMaybe<Scalars['String']['input']>;
   categoryId?: InputMaybe<Scalars['ID']['input']>;
@@ -121,6 +219,8 @@ export type CreateProductInput = {
 export type Expense = {
   __typename?: 'Expense';
   amount: Scalars['Float']['output'];
+  article?: Maybe<Article>;
+  articleId?: Maybe<Scalars['ID']['output']>;
   category?: Maybe<Category>;
   categoryId?: Maybe<Scalars['ID']['output']>;
   createdAt: Scalars['DateTime']['output'];
@@ -132,8 +232,12 @@ export type Expense = {
   notes?: Maybe<Scalars['String']['output']>;
   occurredOn: Scalars['String']['output'];
   paymentMethodId?: Maybe<Scalars['ID']['output']>;
+  /** Cantidad del artículo comprada */
+  quantity: Scalars['Float']['output'];
   receiptUrl?: Maybe<Scalars['String']['output']>;
   recurrence: Recurrence;
+  /** Precio unitario del artículo (amount / quantity) */
+  unitPrice?: Maybe<Scalars['Float']['output']>;
   updatedAt: Scalars['DateTime']['output'];
   userId: Scalars['ID']['output'];
 };
@@ -164,6 +268,19 @@ export type InflationFilterInput = {
   from?: InputMaybe<Scalars['String']['input']>;
   /** Mes final YYYY-MM (inclusive). Por defecto, el mes actual */
   to?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** Punto de un índice de precios (Laspeyres) en un mes */
+export type InflationIndexPoint = {
+  __typename?: 'InflationIndexPoint';
+  /** Inflación % vs mismo mes del año anterior */
+  annualRate?: Maybe<Scalars['Float']['output']>;
+  /** Nº de artículos comparables en el mes (canasta) */
+  basketSize: Scalars['Int']['output'];
+  /** Inflación % vs mes anterior (solo efecto precio) */
+  monthlyRate?: Maybe<Scalars['Float']['output']>;
+  /** Mes YYYY-MM */
+  period: Scalars['String']['output'];
 };
 
 /** Gasto de un mes y su variación frente a periodos previos */
@@ -201,6 +318,7 @@ export type LoginInput = {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  createArticle: Article;
   createCategory: Category;
   createExpense: Expense;
   createIncome: Income;
@@ -215,14 +333,21 @@ export type Mutation = {
   register: AuthPayload;
   /** Registra una compra. Acepta un producto existente (productId) o crea uno nuevo (newProduct). Abre ciclo de consumo si no hay uno y marca la lista de compras. */
   registerProductPurchase: ProductPurchase;
+  removeArticle: Scalars['Boolean']['output'];
   removeCategory: Scalars['Boolean']['output'];
   removeExpense: Scalars['Boolean']['output'];
   removeIncome: Scalars['Boolean']['output'];
   removeProduct: Scalars['Boolean']['output'];
+  updateArticle: Article;
   updateCategory: Category;
   updateExpense: Expense;
   updateIncome: Income;
   updateProduct: Product;
+};
+
+
+export type MutationCreateArticleArgs = {
+  input: CreateArticleInput;
 };
 
 
@@ -277,6 +402,11 @@ export type MutationRegisterProductPurchaseArgs = {
 };
 
 
+export type MutationRemoveArticleArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type MutationRemoveCategoryArgs = {
   id: Scalars['ID']['input'];
 };
@@ -294,6 +424,11 @@ export type MutationRemoveIncomeArgs = {
 
 export type MutationRemoveProductArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type MutationUpdateArticleArgs = {
+  input: UpdateArticleInput;
 };
 
 
@@ -318,6 +453,8 @@ export type MutationUpdateProductArgs = {
 
 export type Product = {
   __typename?: 'Product';
+  article?: Maybe<Article>;
+  articleId?: Maybe<Scalars['ID']['output']>;
   barcode?: Maybe<Scalars['String']['output']>;
   brand?: Maybe<Scalars['String']['output']>;
   category?: Maybe<Category>;
@@ -368,6 +505,11 @@ export type ProductStatsView = {
 
 export type Query = {
   __typename?: 'Query';
+  article: Article;
+  /** Inflación real (índice de precios) por artículo y categoría. NO es expenseInflation (variación de gasto). */
+  articleInflation: ArticleInflationReport;
+  /** Catálogo de artículos del usuario (productos, servicios, etc.) */
+  articles: Array<Article>;
   /** Categorías del sistema + las del usuario */
   categories: Array<Category>;
   category: Category;
@@ -390,6 +532,23 @@ export type Query = {
   productStats: Array<ProductStatsView>;
   /** Catálogo de productos del usuario */
   products: Array<Product>;
+};
+
+
+export type QueryArticleArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryArticleInflationArgs = {
+  filter?: InputMaybe<ArticleInflationFilterInput>;
+};
+
+
+export type QueryArticlesArgs = {
+  includeInactive?: InputMaybe<Scalars['Boolean']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  type?: InputMaybe<ArticleType>;
 };
 
 
@@ -508,6 +667,18 @@ export type UnitOfMeasure =
   | 'ROLL'
   | 'UNIT';
 
+export type UpdateArticleInput = {
+  brand?: InputMaybe<Scalars['String']['input']>;
+  categoryId?: InputMaybe<Scalars['ID']['input']>;
+  id: Scalars['ID']['input'];
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  notes?: InputMaybe<Scalars['String']['input']>;
+  /** producto / servicio / otro */
+  type?: InputMaybe<ArticleType>;
+  unit?: InputMaybe<UnitOfMeasure>;
+};
+
 export type UpdateCategoryInput = {
   color?: InputMaybe<Scalars['String']['input']>;
   icon?: InputMaybe<Scalars['String']['input']>;
@@ -520,16 +691,22 @@ export type UpdateCategoryInput = {
 
 export type UpdateExpenseInput = {
   amount?: InputMaybe<Scalars['Float']['input']>;
+  /** Artículo existente comprado en este gasto */
+  articleId?: InputMaybe<Scalars['ID']['input']>;
   categoryId?: InputMaybe<Scalars['ID']['input']>;
   currency?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   exchangeRate?: InputMaybe<Scalars['Float']['input']>;
   id: Scalars['ID']['input'];
   merchant?: InputMaybe<Scalars['String']['input']>;
+  /** Crear el artículo (producto/servicio/otro) en el mismo gasto. Si es tipo producto, entra al inventario. */
+  newArticle?: InputMaybe<CreateArticleInput>;
   notes?: InputMaybe<Scalars['String']['input']>;
   /** Fecha del gasto (YYYY-MM-DD) */
   occurredOn?: InputMaybe<Scalars['String']['input']>;
   paymentMethodId?: InputMaybe<Scalars['ID']['input']>;
+  /** Cantidad del artículo comprada */
+  quantity?: InputMaybe<Scalars['Float']['input']>;
   receiptUrl?: InputMaybe<Scalars['String']['input']>;
   recurrence?: InputMaybe<Recurrence>;
 };
@@ -551,6 +728,8 @@ export type UpdateIncomeInput = {
 };
 
 export type UpdateProductInput = {
+  /** Artículo (catálogo general) al que pertenece este producto */
+  articleId?: InputMaybe<Scalars['ID']['input']>;
   barcode?: InputMaybe<Scalars['String']['input']>;
   brand?: InputMaybe<Scalars['String']['input']>;
   categoryId?: InputMaybe<Scalars['ID']['input']>;
@@ -576,6 +755,15 @@ export type User = {
   lastName?: Maybe<Scalars['String']['output']>;
   timezone: Scalars['String']['output'];
 };
+
+export type ArticlesQueryVariables = Exact<{
+  search?: InputMaybe<Scalars['String']['input']>;
+  type?: InputMaybe<ArticleType>;
+  includeInactive?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
+
+
+export type ArticlesQuery = { __typename?: 'Query', articles: Array<{ __typename?: 'Article', id: string, name: string, type: ArticleType, brand?: string | null, unit?: UnitOfMeasure | null, categoryId?: string | null, category?: { __typename?: 'Category', id: string, name: string, icon?: string | null } | null }> };
 
 export type LoginMutationVariables = Exact<{
   input: LoginInput;
@@ -632,6 +820,13 @@ export type RemoveCategoryMutationVariables = Exact<{
 
 export type RemoveCategoryMutation = { __typename?: 'Mutation', removeCategory: boolean };
 
+export type ArticleInflationQueryVariables = Exact<{
+  filter?: InputMaybe<ArticleInflationFilterInput>;
+}>;
+
+
+export type ArticleInflationQuery = { __typename?: 'Query', articleInflation: { __typename?: 'ArticleInflationReport', latestMonthlyRate?: number | null, latestAnnualRate?: number | null, averageMonthlyRate?: number | null, points: Array<{ __typename?: 'InflationIndexPoint', period: string, monthlyRate?: number | null, annualRate?: number | null, basketSize: number }>, articles: Array<{ __typename?: 'ArticlePriceSeries', articleId: string, name: string, latestMonthlyRate?: number | null, latestAnnualRate?: number | null, points: Array<{ __typename?: 'ArticlePricePoint', period: string, avgUnitPrice: number, quantity: number, monthlyRate?: number | null, annualRate?: number | null }> }>, categories: Array<{ __typename?: 'CategoryPriceSeries', categoryId?: string | null, categoryName?: string | null, latestMonthlyRate?: number | null, latestAnnualRate?: number | null, points: Array<{ __typename?: 'InflationIndexPoint', period: string, monthlyRate?: number | null, annualRate?: number | null }> }> } };
+
 export type ExpenseInflationQueryVariables = Exact<{
   filter?: InputMaybe<InflationFilterInput>;
 }>;
@@ -645,7 +840,7 @@ export type ProductsQueryVariables = Exact<{
 }>;
 
 
-export type ProductsQuery = { __typename?: 'Query', products: Array<{ __typename?: 'Product', id: string, name: string, brand?: string | null, packageSize?: number | null, unit: UnitOfMeasure, barcode?: string | null, isConsumable: boolean, isActive: boolean, inStock: boolean, notes?: string | null, category?: { __typename?: 'Category', id: string, name: string, icon?: string | null } | null }> };
+export type ProductsQuery = { __typename?: 'Query', products: Array<{ __typename?: 'Product', id: string, name: string, brand?: string | null, packageSize?: number | null, unit: UnitOfMeasure, barcode?: string | null, isConsumable: boolean, isActive: boolean, inStock: boolean, notes?: string | null, articleId?: string | null, article?: { __typename?: 'Article', id: string, name: string } | null, category?: { __typename?: 'Category', id: string, name: string, icon?: string | null } | null }> };
 
 export type ProductStatsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -701,7 +896,7 @@ export type ExpensesQueryVariables = Exact<{
 }>;
 
 
-export type ExpensesQuery = { __typename?: 'Query', expenses: Array<{ __typename?: 'Expense', id: string, description: string, amount: number, currency: string, exchangeRate: number, occurredOn: string, merchant?: string | null, notes?: string | null, recurrence: Recurrence, categoryId?: string | null, category?: { __typename?: 'Category', id: string, name: string, icon?: string | null } | null }> };
+export type ExpensesQuery = { __typename?: 'Query', expenses: Array<{ __typename?: 'Expense', id: string, description: string, amount: number, currency: string, exchangeRate: number, occurredOn: string, merchant?: string | null, notes?: string | null, recurrence: Recurrence, quantity: number, unitPrice?: number | null, categoryId?: string | null, articleId?: string | null, category?: { __typename?: 'Category', id: string, name: string, icon?: string | null } | null, article?: { __typename?: 'Article', id: string, name: string, type: ArticleType } | null }> };
 
 export type IncomesQueryVariables = Exact<{
   userId: Scalars['ID']['input'];
@@ -716,7 +911,7 @@ export type CreateExpenseMutationVariables = Exact<{
 }>;
 
 
-export type CreateExpenseMutation = { __typename?: 'Mutation', createExpense: { __typename?: 'Expense', id: string, description: string, amount: number, currency: string, exchangeRate: number, occurredOn: string, merchant?: string | null, notes?: string | null, recurrence: Recurrence, categoryId?: string | null, category?: { __typename?: 'Category', id: string, name: string, icon?: string | null } | null } };
+export type CreateExpenseMutation = { __typename?: 'Mutation', createExpense: { __typename?: 'Expense', id: string, description: string, amount: number, currency: string, exchangeRate: number, occurredOn: string, merchant?: string | null, notes?: string | null, recurrence: Recurrence, quantity: number, unitPrice?: number | null, categoryId?: string | null, articleId?: string | null, category?: { __typename?: 'Category', id: string, name: string, icon?: string | null } | null, article?: { __typename?: 'Article', id: string, name: string, type: ArticleType } | null } };
 
 export type CreateIncomeMutationVariables = Exact<{
   input: CreateIncomeInput;
@@ -730,7 +925,7 @@ export type UpdateExpenseMutationVariables = Exact<{
 }>;
 
 
-export type UpdateExpenseMutation = { __typename?: 'Mutation', updateExpense: { __typename?: 'Expense', id: string, description: string, amount: number, currency: string, exchangeRate: number, occurredOn: string, merchant?: string | null, notes?: string | null, recurrence: Recurrence, categoryId?: string | null, category?: { __typename?: 'Category', id: string, name: string, icon?: string | null } | null } };
+export type UpdateExpenseMutation = { __typename?: 'Mutation', updateExpense: { __typename?: 'Expense', id: string, description: string, amount: number, currency: string, exchangeRate: number, occurredOn: string, merchant?: string | null, notes?: string | null, recurrence: Recurrence, quantity: number, unitPrice?: number | null, categoryId?: string | null, articleId?: string | null, category?: { __typename?: 'Category', id: string, name: string, icon?: string | null } | null, article?: { __typename?: 'Article', id: string, name: string, type: ArticleType } | null } };
 
 export type UpdateIncomeMutationVariables = Exact<{
   input: UpdateIncomeInput;
@@ -759,6 +954,7 @@ export type HealthQueryVariables = Exact<{ [key: string]: never; }>;
 export type HealthQuery = { __typename?: 'Query', health: string };
 
 
+export const ArticlesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Articles"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"type"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ArticleType"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"includeInactive"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"articles"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"type"},"value":{"kind":"Variable","name":{"kind":"Name","value":"type"}}},{"kind":"Argument","name":{"kind":"Name","value":"includeInactive"},"value":{"kind":"Variable","name":{"kind":"Name","value":"includeInactive"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"brand"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}}]}}]}}]} as unknown as DocumentNode<ArticlesQuery, ArticlesQueryVariables>;
 export const LoginDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"Login"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"LoginInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"login"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"accessToken"}},{"kind":"Field","name":{"kind":"Name","value":"refreshToken"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}}]}}]}}]}}]} as unknown as DocumentNode<LoginMutation, LoginMutationVariables>;
 export const RegisterDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"Register"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"RegisterInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"register"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"accessToken"}},{"kind":"Field","name":{"kind":"Name","value":"refreshToken"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}}]}}]}}]}}]} as unknown as DocumentNode<RegisterMutation, RegisterMutationVariables>;
 export const LogoutDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"Logout"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"refreshToken"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"logout"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"refreshToken"},"value":{"kind":"Variable","name":{"kind":"Name","value":"refreshToken"}}}]}]}}]} as unknown as DocumentNode<LogoutMutation, LogoutMutationVariables>;
@@ -767,8 +963,9 @@ export const CategoriesDocument = {"kind":"Document","definitions":[{"kind":"Ope
 export const CreateCategoryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateCategory"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateCategoryInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createCategory"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}},{"kind":"Field","name":{"kind":"Name","value":"color"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"parentId"}},{"kind":"Field","name":{"kind":"Name","value":"userId"}},{"kind":"Field","name":{"kind":"Name","value":"isActive"}}]}}]}}]} as unknown as DocumentNode<CreateCategoryMutation, CreateCategoryMutationVariables>;
 export const UpdateCategoryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateCategory"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateCategoryInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateCategory"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}},{"kind":"Field","name":{"kind":"Name","value":"color"}},{"kind":"Field","name":{"kind":"Name","value":"isActive"}}]}}]}}]} as unknown as DocumentNode<UpdateCategoryMutation, UpdateCategoryMutationVariables>;
 export const RemoveCategoryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveCategory"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeCategory"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<RemoveCategoryMutation, RemoveCategoryMutationVariables>;
+export const ArticleInflationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ArticleInflation"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ArticleInflationFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"articleInflation"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"latestMonthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"latestAnnualRate"}},{"kind":"Field","name":{"kind":"Name","value":"averageMonthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"points"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"annualRate"}},{"kind":"Field","name":{"kind":"Name","value":"basketSize"}}]}},{"kind":"Field","name":{"kind":"Name","value":"articles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"articleId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"latestMonthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"latestAnnualRate"}},{"kind":"Field","name":{"kind":"Name","value":"points"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"}},{"kind":"Field","name":{"kind":"Name","value":"avgUnitPrice"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"annualRate"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"categories"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"categoryName"}},{"kind":"Field","name":{"kind":"Name","value":"latestMonthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"latestAnnualRate"}},{"kind":"Field","name":{"kind":"Name","value":"points"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"annualRate"}}]}}]}}]}}]}}]} as unknown as DocumentNode<ArticleInflationQuery, ArticleInflationQueryVariables>;
 export const ExpenseInflationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExpenseInflation"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"InflationFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"expenseInflation"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"latestMonthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"latestAnnualRate"}},{"kind":"Field","name":{"kind":"Name","value":"averageMonthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"points"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"}},{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"annualRate"}}]}}]}}]}}]} as unknown as DocumentNode<ExpenseInflationQuery, ExpenseInflationQueryVariables>;
-export const ProductsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Products"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"includeInactive"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"products"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"includeInactive"},"value":{"kind":"Variable","name":{"kind":"Name","value":"includeInactive"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"brand"}},{"kind":"Field","name":{"kind":"Name","value":"packageSize"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"barcode"}},{"kind":"Field","name":{"kind":"Name","value":"isConsumable"}},{"kind":"Field","name":{"kind":"Name","value":"isActive"}},{"kind":"Field","name":{"kind":"Name","value":"inStock"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}}]}}]}}]} as unknown as DocumentNode<ProductsQuery, ProductsQueryVariables>;
+export const ProductsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Products"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"includeInactive"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"products"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"includeInactive"},"value":{"kind":"Variable","name":{"kind":"Name","value":"includeInactive"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"brand"}},{"kind":"Field","name":{"kind":"Name","value":"packageSize"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"barcode"}},{"kind":"Field","name":{"kind":"Name","value":"isConsumable"}},{"kind":"Field","name":{"kind":"Name","value":"isActive"}},{"kind":"Field","name":{"kind":"Name","value":"inStock"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"articleId"}},{"kind":"Field","name":{"kind":"Name","value":"article"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}}]}}]}}]} as unknown as DocumentNode<ProductsQuery, ProductsQueryVariables>;
 export const ProductStatsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ProductStats"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"productStats"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"productId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"closedCycles"}},{"kind":"Field","name":{"kind":"Name","value":"avgDaysLasted"}},{"kind":"Field","name":{"kind":"Name","value":"minDaysLasted"}},{"kind":"Field","name":{"kind":"Name","value":"maxDaysLasted"}},{"kind":"Field","name":{"kind":"Name","value":"avgUnitPrice"}},{"kind":"Field","name":{"kind":"Name","value":"lastPurchasedOn"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedDepletionDate"}}]}}]}}]} as unknown as DocumentNode<ProductStatsQuery, ProductStatsQueryVariables>;
 export const ProductPurchasesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ProductPurchases"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"productId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"productPurchases"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"productId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"productId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"purchasedOn"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"}},{"kind":"Field","name":{"kind":"Name","value":"store"}},{"kind":"Field","name":{"kind":"Name","value":"expenseId"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<ProductPurchasesQuery, ProductPurchasesQueryVariables>;
 export const ConsumptionCyclesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ConsumptionCycles"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"productId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"consumptionCycles"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"productId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"productId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"startedOn"}},{"kind":"Field","name":{"kind":"Name","value":"depletedOn"}},{"kind":"Field","name":{"kind":"Name","value":"daysLasted"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseId"}}]}}]}}]} as unknown as DocumentNode<ConsumptionCyclesQuery, ConsumptionCyclesQueryVariables>;
@@ -776,11 +973,11 @@ export const RegisterProductPurchaseDocument = {"kind":"Document","definitions":
 export const MarkProductDepletedDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"MarkProductDepleted"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"productId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"depletedOn"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"markProductDepleted"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"productId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"productId"}}},{"kind":"Argument","name":{"kind":"Name","value":"depletedOn"},"value":{"kind":"Variable","name":{"kind":"Name","value":"depletedOn"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"inStock"}}]}}]}}]} as unknown as DocumentNode<MarkProductDepletedMutation, MarkProductDepletedMutationVariables>;
 export const CreateProductDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateProduct"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateProductInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createProduct"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"brand"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"isConsumable"}},{"kind":"Field","name":{"kind":"Name","value":"isActive"}},{"kind":"Field","name":{"kind":"Name","value":"inStock"}}]}}]}}]} as unknown as DocumentNode<CreateProductMutation, CreateProductMutationVariables>;
 export const RemoveProductDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveProduct"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeProduct"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<RemoveProductMutation, RemoveProductMutationVariables>;
-export const ExpensesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Expenses"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionsFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"expenses"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"userId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"exchangeRate"}},{"kind":"Field","name":{"kind":"Name","value":"occurredOn"}},{"kind":"Field","name":{"kind":"Name","value":"merchant"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"recurrence"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}}]}}]}}]} as unknown as DocumentNode<ExpensesQuery, ExpensesQueryVariables>;
+export const ExpensesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Expenses"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionsFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"expenses"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"userId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"exchangeRate"}},{"kind":"Field","name":{"kind":"Name","value":"occurredOn"}},{"kind":"Field","name":{"kind":"Name","value":"merchant"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"recurrence"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}},{"kind":"Field","name":{"kind":"Name","value":"articleId"}},{"kind":"Field","name":{"kind":"Name","value":"article"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"type"}}]}}]}}]}}]} as unknown as DocumentNode<ExpensesQuery, ExpensesQueryVariables>;
 export const IncomesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Incomes"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionsFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"incomes"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"userId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"exchangeRate"}},{"kind":"Field","name":{"kind":"Name","value":"occurredOn"}},{"kind":"Field","name":{"kind":"Name","value":"source"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"recurrence"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}}]}}]}}]} as unknown as DocumentNode<IncomesQuery, IncomesQueryVariables>;
-export const CreateExpenseDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateExpense"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateExpenseInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createExpense"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"exchangeRate"}},{"kind":"Field","name":{"kind":"Name","value":"occurredOn"}},{"kind":"Field","name":{"kind":"Name","value":"merchant"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"recurrence"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}}]}}]}}]} as unknown as DocumentNode<CreateExpenseMutation, CreateExpenseMutationVariables>;
+export const CreateExpenseDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateExpense"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateExpenseInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createExpense"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"exchangeRate"}},{"kind":"Field","name":{"kind":"Name","value":"occurredOn"}},{"kind":"Field","name":{"kind":"Name","value":"merchant"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"recurrence"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}},{"kind":"Field","name":{"kind":"Name","value":"articleId"}},{"kind":"Field","name":{"kind":"Name","value":"article"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"type"}}]}}]}}]}}]} as unknown as DocumentNode<CreateExpenseMutation, CreateExpenseMutationVariables>;
 export const CreateIncomeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateIncome"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateIncomeInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createIncome"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"exchangeRate"}},{"kind":"Field","name":{"kind":"Name","value":"occurredOn"}},{"kind":"Field","name":{"kind":"Name","value":"source"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"recurrence"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}}]}}]}}]} as unknown as DocumentNode<CreateIncomeMutation, CreateIncomeMutationVariables>;
-export const UpdateExpenseDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateExpense"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateExpenseInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateExpense"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"exchangeRate"}},{"kind":"Field","name":{"kind":"Name","value":"occurredOn"}},{"kind":"Field","name":{"kind":"Name","value":"merchant"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"recurrence"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}}]}}]}}]} as unknown as DocumentNode<UpdateExpenseMutation, UpdateExpenseMutationVariables>;
+export const UpdateExpenseDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateExpense"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateExpenseInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateExpense"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"exchangeRate"}},{"kind":"Field","name":{"kind":"Name","value":"occurredOn"}},{"kind":"Field","name":{"kind":"Name","value":"merchant"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"recurrence"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}},{"kind":"Field","name":{"kind":"Name","value":"articleId"}},{"kind":"Field","name":{"kind":"Name","value":"article"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"type"}}]}}]}}]}}]} as unknown as DocumentNode<UpdateExpenseMutation, UpdateExpenseMutationVariables>;
 export const UpdateIncomeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateIncome"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateIncomeInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateIncome"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"exchangeRate"}},{"kind":"Field","name":{"kind":"Name","value":"occurredOn"}},{"kind":"Field","name":{"kind":"Name","value":"source"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"recurrence"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}}]}}]}}]} as unknown as DocumentNode<UpdateIncomeMutation, UpdateIncomeMutationVariables>;
 export const RemoveExpenseDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveExpense"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeExpense"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<RemoveExpenseMutation, RemoveExpenseMutationVariables>;
 export const RemoveIncomeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveIncome"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeIncome"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<RemoveIncomeMutation, RemoveIncomeMutationVariables>;

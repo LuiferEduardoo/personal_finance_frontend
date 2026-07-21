@@ -18,11 +18,19 @@ export const ExpensesQuery = graphql(`
       merchant
       notes
       recurrence
+      quantity
+      unitPrice
       categoryId
       category {
         id
         name
         icon
+      }
+      articleId
+      article {
+        id
+        name
+        type
       }
     }
   }
@@ -62,11 +70,19 @@ export const CreateExpenseMutation = graphql(`
       merchant
       notes
       recurrence
+      quantity
+      unitPrice
       categoryId
       category {
         id
         name
         icon
+      }
+      articleId
+      article {
+        id
+        name
+        type
       }
     }
   }
@@ -106,11 +122,19 @@ export const UpdateExpenseMutation = graphql(`
       merchant
       notes
       recurrence
+      quantity
+      unitPrice
       categoryId
       category {
         id
         name
         icon
+      }
+      articleId
+      article {
+        id
+        name
+        type
       }
     }
   }

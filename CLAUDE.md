@@ -9,9 +9,19 @@ Dashboard web para una aplicación de **gestión de gastos personales**. Es solo
 Funcionalidad que debe cubrir el dashboard:
 
 - Registro y consulta de **gastos** e **ingresos**, con filtros por rango de fechas y categoría.
+- Al registrar un gasto, vincular o crear un **artículo** (catálogo de lo que se compra) con su cantidad.
 - **Categorías** propias y del sistema, con jerarquía padre/hijo.
-- **Inflación personal**: serie mensual del gasto con variaciones mensual y anual.
+- **Inflación**: dos métricas separadas en pestañas — precios (`articleInflation`) y variación de gasto (`expenseInflation`).
 - **Catálogo de productos** con inventario (`inStock`), historial de compras, ciclos de consumo y predicción de agotamiento.
+
+## Artículos y su efecto en el inventario
+
+Un **artículo** es lo que se compra (`PRODUCT` / `SERVICE` / `OTHER`); un **producto** es la ficha de inventario de un artículo tipo `PRODUCT`. El frontend **no** tiene pantalla de gestión de artículos: se usan y se crean solo desde el modal de gasto ([ArticleField.tsx](src/features/articles/ArticleField.tsx), un combobox "elegir o crear").
+
+- `CreateExpenseInput`/`UpdateExpenseInput` aceptan `articleId` **o** `newArticle`, nunca ambos (`BAD_REQUEST` "Envía solo uno...", verificado). El XOR se garantiza en cliente con `ArticleSelection` discriminado y `buildArticleInput` ([article.ts](src/features/articles/article.ts)).
+- `unitPrice = amount / quantity`; el backend lo devuelve calculado, el form lo muestra en vivo (`computeUnitPrice`, `null` si cantidad ≤ 0).
+- **Efecto colateral clave** (verificado contra el backend): un gasto con `newArticle`/`articleId` de tipo `PRODUCT` crea/reabre un producto y lo deja `inStock: true`, **sin pasar por las mutaciones de productos**. Por eso `createExpense`/`updateExpense` evictan `products`/`productStats`/`productPurchases` de la caché cuando `article.type === 'PRODUCT'` (ver `evictInventory` en [TransactionForm.tsx](src/features/transactions/TransactionForm.tsx)).
+- **Las dos inflaciones no son comparables**: precios da ~IPC (~10 %), gasto da porcentajes grandes. Van en pestañas separadas y cada una explica qué mide ([InflationPage.tsx](src/features/inflation/InflationPage.tsx)).
 
 ## Stack
 

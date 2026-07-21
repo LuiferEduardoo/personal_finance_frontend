@@ -1,4 +1,4 @@
-import { useMutation } from '@apollo/client'
+import { type ApolloCache, useMutation } from '@apollo/client'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -6,10 +6,17 @@ import { z } from 'zod'
 import { Button } from '@/components/Button'
 import { Field } from '@/components/Field'
 import { Select } from '@/components/Select'
+import {
+  buildArticleInput,
+  computeUnitPrice,
+  type ArticleSelection,
+} from '@/features/articles/article'
+import { ArticleField } from '@/features/articles/ArticleField'
 import { useCurrentUserId } from '@/features/auth/SessionContext'
 import { useCategories } from '@/features/categories/useCategories'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import { todayIso } from '@/lib/dates'
+import { formatAmount } from '@/lib/money'
 import {
   CreateExpenseMutation,
   CreateIncomeMutation,
@@ -34,7 +41,35 @@ const schema = z.object({
   categoryId: z.string().optional(),
   counterparty: z.string().optional(),
   notes: z.string().optional(),
+  // Solo aplica a gastos. Default 1; el precio unitario se calcula con ella.
+  quantity: z.number().positive('Debe ser mayor que 0').optional(),
 })
+
+/**
+ * Un gasto con artículo tipo PRODUCT crea/reabre un producto por debajo, sin
+ * pasar por las mutaciones de productos (verificado contra el backend). Sin
+ * invalidar, la pantalla Productos mostraría un `inStock` viejo. Se evictan los
+ * campos raíz de inventario para que se refetcheen al volver a esa pantalla;
+ * invalidación perezosa, no un refetch inmediato de algo que quizá no se ve.
+ */
+function evictInventory(cache: ApolloCache<unknown>): void {
+  for (const fieldName of ['products', 'productStats', 'productPurchases']) {
+    cache.evict({ id: 'ROOT_QUERY', fieldName })
+  }
+  cache.gc()
+}
+
+/** Selección inicial del artículo al abrir el formulario (vacía o desde la edición). */
+function initialArticleSelection(transaction?: Transaction): ArticleSelection {
+  if (transaction?.articleId && transaction.articleName) {
+    return {
+      mode: 'existing',
+      articleId: transaction.articleId,
+      label: transaction.articleName,
+    }
+  }
+  return { mode: 'none' }
+}
 
 type FormValues = z.infer<typeof schema>
 
@@ -52,6 +87,9 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
   const [formError, setFormError] = useState<string | null>(null)
 
   const { tree, loading: loadingCategories } = useCategories(kind)
+  const [article, setArticle] = useState<ArticleSelection>(() =>
+    initialArticleSelection(transaction),
+  )
 
   // Tras crear o editar hay que refrescar las listas: la caché no puede saber
   // en qué filtros encaja un movimiento nuevo.
@@ -68,6 +106,7 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -78,13 +117,26 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
       categoryId: transaction?.categoryId ?? '',
       counterparty: transaction?.counterparty ?? '',
       notes: transaction?.notes ?? '',
+      quantity: transaction?.quantity ?? 1,
     },
   })
+
+  // Precio unitario en vivo, como feedback mientras se escribe. El backend lo
+  // recalcula al guardar; esto solo evita que el usuario tenga que hacer la
+  // división mental.
+  const liveUnitPrice = computeUnitPrice(watch('amount'), watch('quantity'))
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null)
     // Un campo opcional vacío es "no informado", no cadena vacía.
     const optional = (value: string | undefined) => value?.trim() || undefined
+
+    // Campos exclusivos de gasto: artículo y cantidad. El artículo puede crear
+    // un producto por debajo, así que invalidamos su caché (ver más abajo).
+    const expenseExtras = {
+      ...buildArticleInput(article),
+      quantity: values.quantity ?? undefined,
+    }
 
     try {
       if (isEditing) {
@@ -102,7 +154,16 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
           })
         } else {
           await updateExpense({
-            variables: { input: { ...base, merchant: optional(values.counterparty) } },
+            variables: {
+              input: {
+                ...base,
+                merchant: optional(values.counterparty),
+                ...expenseExtras,
+              },
+            },
+            update: (cache, { data }) => {
+              if (data?.updateExpense.article?.type === 'PRODUCT') evictInventory(cache)
+            },
           })
         }
       } else {
@@ -120,7 +181,16 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
           })
         } else {
           await createExpense({
-            variables: { input: { ...base, merchant: optional(values.counterparty) } },
+            variables: {
+              input: {
+                ...base,
+                merchant: optional(values.counterparty),
+                ...expenseExtras,
+              },
+            },
+            update: (cache, { data }) => {
+              if (data?.createExpense.article?.type === 'PRODUCT') evictInventory(cache)
+            },
           })
         }
       }
@@ -175,6 +245,40 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
           </option>
         ))}
       </Select>
+
+      {/* El artículo y la cantidad son exclusivos de gastos: un ingreso no
+          compra nada del catálogo. */}
+      {!isIncome && (
+        <>
+          <ArticleField value={article} onChange={setArticle} />
+
+          {article.mode !== 'none' && (
+            <>
+              <Field
+                label="Cantidad"
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min="0"
+                error={errors.quantity?.message}
+                {...register('quantity', {
+                  setValueAs: (value: string) =>
+                    value === '' ? undefined : Number(value),
+                })}
+              />
+
+              {liveUnitPrice != null && (
+                <p className="text-ink-secondary text-sm">
+                  Precio unitario:{' '}
+                  <span className="tabular text-ink font-medium">
+                    {formatAmount(liveUnitPrice, transaction?.currency ?? 'COP')}
+                  </span>
+                </p>
+              )}
+            </>
+          )}
+        </>
+      )}
 
       <Field
         label={isIncome ? 'Fuente (opcional)' : 'Comercio (opcional)'}

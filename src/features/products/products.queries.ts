@@ -19,6 +19,11 @@ export const ProductsQuery = graphql(`
       isActive
       inStock
       notes
+      articleId
+      article {
+        id
+        name
+      }
       category {
         id
         name

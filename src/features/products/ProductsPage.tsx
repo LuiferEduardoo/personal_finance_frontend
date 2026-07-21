@@ -161,6 +161,11 @@ export function ProductsPage() {
                       <p className="text-ink-muted mt-0.5 text-xs">
                         {formatPackage(product.packageSize, product.unit)}
                         {product.category && ` · ${product.category.name}`}
+                        {/* El artículo suele llamarse igual que el producto; solo
+                            se muestra cuando aporta algo distinto. */}
+                        {product.article && product.article.name !== product.name && (
+                          <> · Artículo: {product.article.name}</>
+                        )}
                       </p>
                     </div>
                     <StockBadge

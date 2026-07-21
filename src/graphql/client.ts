@@ -93,6 +93,7 @@ export const apolloClient = new ApolloClient({
           products: { keyArgs: ['search', 'includeInactive'] },
           productPurchases: { keyArgs: ['productId'] },
           consumptionCycles: { keyArgs: ['productId'] },
+          articles: { keyArgs: ['search', 'type', 'includeInactive'] },
         },
       },
     },
