@@ -66,6 +66,7 @@ function initialArticleSelection(transaction?: Transaction): ArticleSelection {
       mode: 'existing',
       articleId: transaction.articleId,
       label: transaction.articleName,
+      type: transaction.articleType ?? 'PRODUCT',
     }
   }
   return { mode: 'none' }
@@ -203,6 +204,37 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+      {!isIncome && (
+        <>
+          <ArticleField value={article} onChange={setArticle} />
+
+          {article.mode !== 'none' && (
+            <>
+              <Field
+                label="Cantidad"
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min="0"
+                error={errors.quantity?.message}
+                {...register('quantity', {
+                  setValueAs: (value: string) =>
+                    value === '' ? undefined : Number(value),
+                })}
+              />
+
+              {liveUnitPrice != null && (
+                <p className="text-ink-secondary text-sm">
+                  Precio unitario:{' '}
+                  <span className="tabular text-ink font-medium">
+                    {formatAmount(liveUnitPrice, transaction?.currency ?? 'COP')}
+                  </span>
+                </p>
+              )}
+            </>
+          )}
+        </>
+      )}
       <Field
         label="Descripción"
         placeholder={isIncome ? 'Pago nómina julio' : 'Mercado semana'}
@@ -248,37 +280,6 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
 
       {/* El artículo y la cantidad son exclusivos de gastos: un ingreso no
           compra nada del catálogo. */}
-      {!isIncome && (
-        <>
-          <ArticleField value={article} onChange={setArticle} />
-
-          {article.mode !== 'none' && (
-            <>
-              <Field
-                label="Cantidad"
-                type="number"
-                inputMode="decimal"
-                step="any"
-                min="0"
-                error={errors.quantity?.message}
-                {...register('quantity', {
-                  setValueAs: (value: string) =>
-                    value === '' ? undefined : Number(value),
-                })}
-              />
-
-              {liveUnitPrice != null && (
-                <p className="text-ink-secondary text-sm">
-                  Precio unitario:{' '}
-                  <span className="tabular text-ink font-medium">
-                    {formatAmount(liveUnitPrice, transaction?.currency ?? 'COP')}
-                  </span>
-                </p>
-              )}
-            </>
-          )}
-        </>
-      )}
 
       <Field
         label={isIncome ? 'Fuente (opcional)' : 'Comercio (opcional)'}

@@ -15,117 +15,159 @@ type ArticleFieldProps = {
 }
 
 /**
- * Combobox "elegir o crear": se escribe para buscar en el catálogo; si el
- * artículo no está, se ofrece crearlo (revela tipo y categoría). Es opcional:
- * el estado inicial `none` es válido y no envía ningún campo de artículo.
+ * Clasifica y elige el artículo de un gasto.
+ *
+ * El select "Tipo" (producto / servicio / otro) está SIEMPRE visible: es la
+ * distinción principal de qué se compró. Filtra la búsqueda y clasifica lo que
+ * se crea. Debajo, un combobox "elegir o crear": se busca en el catálogo y, si
+ * no aparece, se ofrece crearlo con el tipo elegido. Todo es opcional: el estado
+ * inicial `none` no envía ningún campo de artículo.
  */
 export function ArticleField({ value, onChange }: ArticleFieldProps) {
   const id = useId()
   const [term, setTerm] = useState('')
   const [open, setOpen] = useState(false)
+  // Tipo "en borrador" mientras aún no hay artículo elegido: gobierna la
+  // búsqueda y el alta. Cuando ya hay uno, el tipo lo lleva la propia selección.
+  const [draftType, setDraftType] = useState<ArticleType>('PRODUCT')
+
+  const effectiveType = value.mode === 'none' ? draftType : value.type
   const debouncedTerm = useDebouncedValue(term.trim(), 250)
 
   const { data, loading } = useQuery(ArticlesQuery, {
-    variables: { search: debouncedTerm || undefined },
+    variables: { search: debouncedTerm || undefined, type: draftType },
     // Sin al menos dos letras la búsqueda no acota nada útil.
-    skip: debouncedTerm.length < 2,
+    skip: value.mode !== 'none' || debouncedTerm.length < 2,
   })
   const results = data?.articles ?? []
-
-  // Ya hay artículo elegido (existente): mostrarlo con opción de quitar.
-  if (value.mode === 'existing') {
-    return (
-      <SelectedRow label={value.label} onClear={() => onChange({ mode: 'none' })} />
-    )
-  }
-
-  // Se está creando uno nuevo: nombre fijo + tipo + categoría.
-  if (value.mode === 'new') {
-    return <NewArticleFields value={value} onChange={onChange} />
-  }
 
   const hasExactMatch = results.some(
     (article) => article.name.toLowerCase() === debouncedTerm.toLowerCase(),
   )
-  const canCreate = debouncedTerm.length >= 2 && !hasExactMatch
+  const canCreate = value.mode === 'none' && debouncedTerm.length >= 2 && !hasExactMatch
 
   return (
-    <div className="relative">
-      <label htmlFor={id} className="text-ink-secondary block text-sm font-medium">
-        Nombre
-      </label>
-      <input
-        id={id}
-        type="text"
-        role="combobox"
-        aria-expanded={open}
-        aria-autocomplete="list"
-        autoComplete="off"
-        value={term}
-        placeholder="Buscar o crear…"
-        onChange={(event) => {
-          setTerm(event.target.value)
-          setOpen(true)
+    <div className="flex flex-col gap-3">
+      <TypeSelect
+        value={effectiveType}
+        // Con un artículo existente el tipo es intrínseco: se muestra pero no
+        // se cambia (cambiarlo no altera el artículo en el servidor).
+        disabled={value.mode === 'existing'}
+        onChange={(type) => {
+          if (value.mode === 'new') onChange({ ...value, type })
+          else setDraftType(type)
         }}
-        onFocus={() => setOpen(true)}
-        // Retraso para que el click en una opción llegue antes del cierre.
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        className="border-border bg-surface-raised text-ink placeholder:text-ink-muted focus:border-ink mt-1.5 min-h-11 w-full rounded-lg border px-3 text-base outline-none"
       />
 
-      {open && (term.trim().length >= 2 || results.length > 0) && (
-        <ul className="border-border bg-surface-raised absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border shadow-lg">
-          {results.map((article) => (
-            <li key={article.id}>
-              <button
-                type="button"
-                // onMouseDown, no onClick: se dispara antes que el blur del input.
-                onMouseDown={() =>
-                  onChange({
-                    mode: 'existing',
-                    articleId: article.id,
-                    label: article.brand
-                      ? `${article.name} · ${article.brand}`
-                      : article.name,
-                  })
-                }
-                className="hover:bg-surface-sunken flex min-h-11 w-full items-center justify-between gap-2 px-3 text-left text-sm"
-              >
-                <span className="text-ink truncate">{article.name}</span>
-                {article.brand && (
-                  <span className="text-ink-muted shrink-0 text-xs">
-                    {article.brand}
-                  </span>
-                )}
-              </button>
-            </li>
-          ))}
+      {value.mode === 'existing' ? (
+        <SelectedRow label={value.label} onClear={() => onChange({ mode: 'none' })} />
+      ) : value.mode === 'new' ? (
+        <NewArticleFields value={value} onChange={onChange} />
+      ) : (
+        <div className="relative">
+          <label htmlFor={id} className="text-ink-secondary block text-sm font-medium">
+            Artículo (opcional)
+          </label>
+          <input
+            id={id}
+            type="text"
+            role="combobox"
+            aria-expanded={open}
+            aria-autocomplete="list"
+            autoComplete="off"
+            value={term}
+            placeholder="Buscar o crear…"
+            onChange={(event) => {
+              setTerm(event.target.value)
+              setOpen(true)
+            }}
+            onFocus={() => setOpen(true)}
+            // Retraso para que el click en una opción llegue antes del cierre.
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+            className="border-border bg-surface-raised text-ink placeholder:text-ink-muted focus:border-ink mt-1.5 min-h-11 w-full rounded-lg border px-3 text-base outline-none"
+          />
 
-          {loading && results.length === 0 && (
-            <li className="text-ink-muted px-3 py-2.5 text-sm">Buscando…</li>
-          )}
+          {open && (term.trim().length >= 2 || results.length > 0) && (
+            <ul className="border-border bg-surface-raised absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border shadow-lg">
+              {results.map((article) => (
+                <li key={article.id}>
+                  <button
+                    type="button"
+                    // onMouseDown, no onClick: se dispara antes que el blur del input.
+                    onMouseDown={() =>
+                      onChange({
+                        mode: 'existing',
+                        articleId: article.id,
+                        type: article.type,
+                        label: article.brand
+                          ? `${article.name} · ${article.brand}`
+                          : article.name,
+                      })
+                    }
+                    className="hover:bg-surface-sunken flex min-h-11 w-full items-center justify-between gap-2 px-3 text-left text-sm"
+                  >
+                    <span className="text-ink truncate">{article.name}</span>
+                    {article.brand && (
+                      <span className="text-ink-muted shrink-0 text-xs">
+                        {article.brand}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              ))}
 
-          {canCreate && (
-            <li className="border-border border-t">
-              <button
-                type="button"
-                onMouseDown={() =>
-                  onChange({
-                    mode: 'new',
-                    name: term.trim(),
-                    type: 'PRODUCT',
-                    categoryId: null,
-                  })
-                }
-                className="hover:bg-surface-sunken min-h-11 w-full px-3 text-left text-sm"
-              >
-                Crear «<span className="text-ink font-medium">{term.trim()}</span>»
-              </button>
-            </li>
+              {loading && results.length === 0 && (
+                <li className="text-ink-muted px-3 py-2.5 text-sm">Buscando…</li>
+              )}
+
+              {canCreate && (
+                <li className="border-border border-t">
+                  <button
+                    type="button"
+                    onMouseDown={() =>
+                      onChange({
+                        mode: 'new',
+                        name: term.trim(),
+                        type: draftType,
+                        categoryId: null,
+                      })
+                    }
+                    className="hover:bg-surface-sunken min-h-11 w-full px-3 text-left text-sm"
+                  >
+                    Crear «<span className="text-ink font-medium">{term.trim()}</span>»
+                  </button>
+                </li>
+              )}
+            </ul>
           )}
-        </ul>
+        </div>
       )}
     </div>
+  )
+}
+
+function TypeSelect({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: ArticleType
+  disabled: boolean
+  onChange: (type: ArticleType) => void
+}) {
+  return (
+    <Select
+      label="Tipo"
+      value={value}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.value as ArticleType)}
+    >
+      {ARTICLE_TYPE_OPTIONS.map(([type, label]) => (
+        <option key={type} value={type}>
+          {label}
+        </option>
+      ))}
+    </Select>
   )
 }
 
@@ -170,20 +212,6 @@ function NewArticleFields({
           Quitar
         </button>
       </div>
-
-      <Select
-        label="Tipo"
-        value={value.type}
-        onChange={(event) =>
-          onChange({ ...value, type: event.target.value as ArticleType })
-        }
-      >
-        {ARTICLE_TYPE_OPTIONS.map(([type, label]) => (
-          <option key={type} value={type}>
-            {label}
-          </option>
-        ))}
-      </Select>
 
       <Select
         label="Categoría (opcional)"

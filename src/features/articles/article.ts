@@ -7,7 +7,7 @@ import type { ArticleType, CreateArticleInput } from '@/graphql/generated/graphq
  */
 export type ArticleSelection =
   | { mode: 'none' }
-  | { mode: 'existing'; articleId: string; label: string }
+  | { mode: 'existing'; articleId: string; label: string; type: ArticleType }
   | { mode: 'new'; name: string; type: ArticleType; categoryId: string | null }
 
 /**

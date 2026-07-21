@@ -11,6 +11,7 @@ describe('buildArticleInput', () => {
       mode: 'existing',
       articleId: 'a1',
       label: 'Shampoo',
+      type: 'PRODUCT',
     })
     expect(input).toEqual({ articleId: 'a1' })
     expect(input).not.toHaveProperty('newArticle')
