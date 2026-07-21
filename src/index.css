@@ -1,0 +1,34 @@
+@import 'tailwindcss';
+@import './styles/theme.css';
+
+/* La tab bar y el FAB se apoyan en el inset inferior en iOS. */
+@theme {
+  --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  /* Evita que iOS reescale el texto al girar el dispositivo. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+/* Los importes se alinean por columna y no bailan al cambiar de dígito. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,9 @@
+dist
+node_modules
+package-lock.json
+
+# Skills vendorizadas: su hash está en skills-lock.json, reformatearlas lo rompe
+.agents
+
+# Salida de graphql-codegen
+src/graphql/generated

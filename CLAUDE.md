@@ -15,16 +15,31 @@ Funcionalidad que debe cubrir el dashboard:
 
 ## Stack
 
-- **React.js** con **TypeScript** (`strict: true`; evitar `any`, preferir tipos generados del esquema GraphQL).
-- **Tailwind CSS** para todos los estilos. No escribir CSS suelto ni CSS-in-JS salvo que no haya alternativa; nada de estilos inline para cosas que Tailwind ya resuelve.
-- Cliente GraphQL contra `POST http://localhost:3000/graphql` (configurable por variable de entorno, nunca hardcodeado en componentes).
+- **React 19** + **TypeScript** `strict` (con `noUncheckedIndexedAccess`), build con **Vite**.
+- **Tailwind CSS v4** para todos los estilos, configurado por CSS (`@theme`), sin `tailwind.config.js`. No escribir CSS suelto ni CSS-in-JS salvo que no haya alternativa.
+- **Apollo Client** contra el endpoint de `VITE_GRAPHQL_ENDPOINT` (nunca hardcodeado; se lee solo en `src/graphql/env.ts`).
+- **Recharts** para gráficos, **react-router v7**, **react-hook-form + zod** para formularios.
+- **oxlint** (no ESLint: es lo que trae la plantilla de Vite) + **Prettier**.
+
+Comandos: `npm run dev` · `build` · `typecheck` · `lint` · `format` · `codegen`.
 
 ## Convenciones
 
 - Componentes en PascalCase, un componente por archivo.
+- Importar con el alias `@/…` (→ `src/…`), no con rutas relativas largas.
 - Las queries y mutations viven junto al feature que las usa, no en un barril global.
-- Los tipos del dominio (`Expense`, `Income`, `Category`, `Product`, ...) se derivan del esquema GraphQL; no duplicar interfaces a mano si se pueden generar.
+- Los tipos del dominio (`Expense`, `Income`, `Category`, `Product`, ...) se generan con `npm run codegen` desde el esquema en vivo; **nunca** escribirlos a mano. Requiere el backend levantado.
 - El texto de la interfaz va en **español** (es la lengua del producto y de los mensajes de error del backend).
+- Mobile-first: se escribe el layout de móvil y se amplía con `sm:` / `lg:`, nunca al revés.
+
+## Color
+
+Los tokens están en `src/styles/theme.css` y **los valores están validados**; el razonamiento está en [docs/color.md](docs/color.md). Léelo antes de tocarlos — varias alternativas obvias fallan las comprobaciones de accesibilidad.
+
+- Usar siempre roles (`text-income`, `bg-expense/10`), nunca hex ni `text-green-500`.
+- `income` / `expense` / `warning` / `neutral` son **datos**. El chrome (fondos, bordes, texto) usa la escala neutra `surface*` / `border` / `ink*`.
+- **Todo importe se renderiza con `<Money>`** (`src/components/Money.tsx`), que añade signo e icono direccional. El color nunca es el único portador del significado: verde y coral quedan a ΔE 6.2 bajo daltonismo en modo oscuro.
+- Desglose por categoría: barras horizontales de un solo tono, no donut multicolor.
 
 ## Contrato con la API
 
@@ -49,17 +64,17 @@ Categorías, gastos e ingresos **no** están migrados al token todavía: reciben
 
 ### Operaciones principales
 
-| Área | Queries | Mutations |
-| --- | --- | --- |
-| Auth | — | `register`, `login`, `refreshTokens`, `logout` |
-| Perfil | 🔒 `me` | — |
-| Categorías | `categories(userId, kind)`, `category(id)` | `createCategory`, `updateCategory`, `removeCategory` |
-| Gastos | `expenses(userId, filter)`, `expense(id)` | `createExpense`, `updateExpense`, `removeExpense` |
-| Ingresos | `incomes(userId, filter)`, `income(id)` | `createIncome`, `updateIncome`, `removeIncome` |
-| Inflación | 🔒 `expenseInflation(filter)` | — |
-| Productos | 🔒 `products(search, includeInactive)`, `product(id)`, `productStats` | 🔒 `createProduct`, `updateProduct`, `removeProduct` |
-| Compras | 🔒 `productPurchases(productId)`, `consumptionCycles(productId)` | 🔒 `registerProductPurchase`, `markProductDepleted` |
-| Utilidad | `health` | — |
+| Área       | Queries                                                               | Mutations                                            |
+| ---------- | --------------------------------------------------------------------- | ---------------------------------------------------- |
+| Auth       | —                                                                     | `register`, `login`, `refreshTokens`, `logout`       |
+| Perfil     | 🔒 `me`                                                               | —                                                    |
+| Categorías | `categories(userId, kind)`, `category(id)`                            | `createCategory`, `updateCategory`, `removeCategory` |
+| Gastos     | `expenses(userId, filter)`, `expense(id)`                             | `createExpense`, `updateExpense`, `removeExpense`    |
+| Ingresos   | `incomes(userId, filter)`, `income(id)`                               | `createIncome`, `updateIncome`, `removeIncome`       |
+| Inflación  | 🔒 `expenseInflation(filter)`                                         | —                                                    |
+| Productos  | 🔒 `products(search, includeInactive)`, `product(id)`, `productStats` | 🔒 `createProduct`, `updateProduct`, `removeProduct` |
+| Compras    | 🔒 `productPurchases(productId)`, `consumptionCycles(productId)`      | 🔒 `registerProductPurchase`, `markProductDepleted`  |
+| Utilidad   | `health`                                                              | —                                                    |
 
 `TransactionsFilterInput`: `from`, `to`, `categoryId`, `paymentMethodId`. Resultados ordenados por fecha descendente.
 `InflationFilterInput`: `from`, `to` (`YYYY-MM`), `categoryId` (incluye subcategorías).
@@ -78,14 +93,14 @@ Categorías, gastos e ingresos **no** están migrados al token todavía: reciben
 
 El código viene en `extensions.code`. Mapeo esperado en la UI:
 
-| Código | Tratamiento |
-| --- | --- |
-| `UNAUTHENTICATED` | Intentar refresh una vez; si falla, cerrar sesión y llevar al login |
-| `BAD_REQUEST` | Mostrar el `message` del backend junto al formulario (ya viene en español) |
-| `NOT_FOUND` | Recurso inexistente o de otro usuario → estado vacío, no error rojo |
-| `CONFLICT` | Solo en `register`: email ya registrado |
-| `GRAPHQL_VALIDATION_FAILED` | Bug del cliente: query desalineada con el esquema. No mostrar al usuario |
-| `INTERNAL_SERVER_ERROR` | Mensaje genérico + opción de reintentar |
+| Código                      | Tratamiento                                                                |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `UNAUTHENTICATED`           | Intentar refresh una vez; si falla, cerrar sesión y llevar al login        |
+| `BAD_REQUEST`               | Mostrar el `message` del backend junto al formulario (ya viene en español) |
+| `NOT_FOUND`                 | Recurso inexistente o de otro usuario → estado vacío, no error rojo        |
+| `CONFLICT`                  | Solo en `register`: email ya registrado                                    |
+| `GRAPHQL_VALIDATION_FAILED` | Bug del cliente: query desalineada con el esquema. No mostrar al usuario   |
+| `INTERNAL_SERVER_ERROR`     | Mensaje genérico + opción de reintentar                                    |
 
 ## Enums
 
@@ -98,7 +113,7 @@ Los enums se muestran traducidos al usuario, pero se envían al backend con su v
 
 ## Convención de commits
 
-- Los commits siguen la convención de *Conventional Commits*: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, etc.
+- Los commits siguen la convención de _Conventional Commits_: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, etc.
 - Los commits se hacen **a nombre del dueño del repositorio** (`LuiferEduardoo <luifer01ortegaperez@gmail.com>`), sin trailers de co-autoría.
 
 ## Desarrollo

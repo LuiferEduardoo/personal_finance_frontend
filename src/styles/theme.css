@@ -1,0 +1,73 @@
+/*
+ * Tokens de color de la aplicación.
+ *
+ * Dos familias, deliberadamente separadas:
+ *
+ *   - SEMÁNTICOS (income / expense / warning / neutral): codifican el estado del
+ *     dinero. Son valores reservados y validados; no se usan para decorar.
+ *   - CHROME (surface / border / ink): la interfaz. Escala neutra, sin color.
+ *
+ * Los valores semánticos pasan las seis comprobaciones del validador de dataviz
+ * en ambos modos. NO cambiarlos a ojo: la combinación es estrecha y varias
+ * alternativas obvias fallan (ver docs/color.md).
+ *
+ * REGLA: el color nunca es el único portador del significado. Todo importe lleva
+ * signo explícito e icono direccional. Verde y coral quedan a ΔE 8.3 (claro) y
+ * 6.2 (oscuro) bajo daltonismo — sin el signo, una lista de movimientos es
+ * ilegible para un usuario con protanopia.
+ */
+
+@theme {
+  /* Semánticos — modo claro */
+  --color-income: #0f8f5f;
+  --color-expense: #e34948;
+  --color-warning: #eda100;
+  --color-neutral: #2a78d6;
+
+  /* Chrome — modo claro */
+  --color-surface: #fcfcfb;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #f4f4f1;
+  --color-border: #e2e1dc;
+  --color-ink: #0b0b0b;
+  --color-ink-secondary: #52514e;
+  --color-ink-muted: #78776f;
+}
+
+/*
+ * Los valores oscuros se declaran en dos ámbitos:
+ *   - la media query cubre la preferencia del sistema operativo;
+ *   - [data-theme] cubre el interruptor manual, que debe ganar en ambos sentidos.
+ * El :not(...) permite que un tema claro explícito venza a un SO en oscuro.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-income: #199e70;
+    --color-expense: #e34948;
+    --color-warning: #c98500;
+    --color-neutral: #3987e5;
+
+    --color-surface: #1a1a19;
+    --color-surface-raised: #242422;
+    --color-surface-sunken: #121211;
+    --color-border: #383835;
+    --color-ink: #ffffff;
+    --color-ink-secondary: #c3c2b7;
+    --color-ink-muted: #8f8e85;
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-income: #199e70;
+  --color-expense: #e34948;
+  --color-warning: #c98500;
+  --color-neutral: #3987e5;
+
+  --color-surface: #1a1a19;
+  --color-surface-raised: #242422;
+  --color-surface-sunken: #121211;
+  --color-border: #383835;
+  --color-ink: #ffffff;
+  --color-ink-secondary: #c3c2b7;
+  --color-ink-muted: #8f8e85;
+}

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- viewport-fit=cover habilita env(safe-area-inset-*), que la tab bar necesita -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <title>Finanzas personales</title>
+    <script>
+      // Aplica el tema guardado antes del primer pintado para evitar el parpadeo
+      // claro→oscuro. Debe ir inline y antes del bundle.
+      try {
+        const stored = localStorage.getItem('theme')
+        if (stored === 'light' || stored === 'dark') {
+          document.documentElement.dataset.theme = stored
+        }
+      } catch {
+        // localStorage bloqueado (modo privado): se usa la preferencia del SO
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
