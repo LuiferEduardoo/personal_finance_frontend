@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { Button } from '@/components/Button'
 import { useSession } from '@/features/auth/SessionContext'
 
@@ -19,6 +20,26 @@ export function SettingsPage() {
           <Row label="Zona horaria" value={user.timezone} />
         </dl>
       )}
+
+      {/* Las categorías se gestionan poco, así que no ocupan sitio en la tab bar. */}
+      <Link
+        to="/categorias"
+        className="border-border bg-surface-raised hover:bg-surface-sunken mt-4 flex min-h-11 items-center justify-between rounded-lg border px-4 py-3"
+      >
+        <span className="text-ink text-sm font-medium">Categorías</span>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          className="text-ink-muted size-5"
+        >
+          <path d="m9 6 6 6-6 6" />
+        </svg>
+      </Link>
 
       <Button variant="secondary" onClick={() => void logout()} className="mt-6">
         Cerrar sesión
