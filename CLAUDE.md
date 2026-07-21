@@ -45,11 +45,13 @@ Los tokens están en `src/styles/theme.css` y **los valores están validados**; 
 
 ### Autenticación
 
-- `register` / `login` devuelven `accessToken` + `refreshToken` + `user`.
+- `register` / `login` devuelven `accessToken` (JWT, 20 min) + `refreshToken` (opaco, 6 meses) + `user`.
 - Los endpoints marcados 🔒 requieren la cabecera `Authorization: Bearer <accessToken>`.
-- **El refresh token rota**: `refreshTokens(refreshToken)` revoca el enviado y devuelve uno nuevo. Reutilizar el viejo da `UNAUTHORIZED`. El cliente debe guardar siempre el último y **serializar los refresh concurrentes** (una sola petición de refresh en vuelo, las demás esperan su resultado) o se invalidará la sesión.
+- **El refresh token rota**: `refreshTokens(refreshToken)` revoca el enviado y devuelve uno nuevo. Reutilizar el viejo falla (verificado contra el backend). El cliente guarda siempre el último y **serializa los refresh concurrentes** — implementado en `src/features/auth/refresh.ts`, con tests en `refresh.test.ts`.
 - `logout(refreshToken)` revoca el token.
 - `me` devuelve el usuario autenticado, incluida `baseCurrency` y `timezone`.
+
+> **Corrección a la documentación de la API**: dice que el login fallido y el refresh reutilizado devuelven `UNAUTHORIZED`. El backend real devuelve **`UNAUTHENTICATED`** en ambos casos (comprobado con curl). Esto importa: el `errorLink` no puede tratar todo `UNAUTHENTICATED` como "token caducado", o intentaría renovar tras un login fallido y taparía el mensaje "Credenciales inválidas". Las operaciones `Login`, `Register` y `RefreshTokens` están excluidas del refresco en `src/graphql/client.ts`.
 
 ### El detalle importante de `userId`
 
