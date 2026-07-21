@@ -66,7 +66,7 @@ export function ArticleField({ value, onChange }: ArticleFieldProps) {
       ) : (
         <div className="relative">
           <label htmlFor={id} className="text-ink-secondary block text-sm font-medium">
-            Nombre
+            Nombres articulos (opcional)
           </label>
           <input
             id={id}

@@ -1,5 +1,5 @@
 import { useMutation } from '@apollo/client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { Button } from '@/components/Button'
 import { Sheet } from '@/components/Sheet'
@@ -35,6 +35,14 @@ export function TransactionsPage() {
     isCreatingFromRoute ? 'EXPENSE' : null,
   )
   const [removeError, setRemoveError] = useState<string | null>(null)
+
+  // /movimientos y /movimientos/nuevo renderizan el MISMO componente, así que al
+  // navegar de una a otra React no lo remonta y el initializer de useState de
+  // arriba no vuelve a correr. Sincronizar la apertura con la ruta por efecto es
+  // lo que hace que el FAB "Registrar gasto" abra el modal estando ya en la lista.
+  useEffect(() => {
+    if (isCreatingFromRoute) setCreatingKind('EXPENSE')
+  }, [isCreatingFromRoute])
 
   const { tree } = useCategories()
   const { transactions, loading, error } = useTransactions(scope, {
