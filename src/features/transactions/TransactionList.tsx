@@ -36,6 +36,9 @@ export function TransactionList({
                 <p className="text-ink-muted mt-0.5 text-xs">
                   {formatDate(transaction.occurredOn)}
                   {transaction.categoryName && ` · ${transaction.categoryName}`}
+                  {transaction.accountName && ` · ${transaction.accountName}`}
+                  {transaction.items.length > 0 &&
+                    ` · ${transaction.items.length} ítem${transaction.items.length > 1 ? 's' : ''}`}
                 </p>
               </div>
               <Money

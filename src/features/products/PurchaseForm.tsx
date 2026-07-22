@@ -97,14 +97,16 @@ export function PurchaseForm({
       await registerPurchase({
         variables: {
           input: {
-            // Exactamente uno de los dos, nunca ambos.
+            // Exactamente uno de los dos, nunca ambos. Es un artículo tipo
+            // PRODUCT (nace/actualiza el inventario). `packageSize` no es campo
+            // de CreateArticleInput, así que no se envía aquí.
             ...(values.mode === 'existing'
-              ? { productId: values.productId }
+              ? { articleId: values.productId }
               : {
-                  newProduct: {
+                  newArticle: {
                     name: values.name!.trim(),
+                    type: 'PRODUCT' as const,
                     brand: optional(values.brand),
-                    packageSize: values.packageSize ?? undefined,
                     unit: (values.unit as UnitOfMeasure) ?? undefined,
                   },
                 }),
@@ -152,26 +154,13 @@ export function PurchaseForm({
             {...register('name')}
           />
           <Field label="Marca (opcional)" placeholder="P&G" {...register('brand')} />
-          <div className="grid grid-cols-2 gap-3">
-            <Field
-              label="Tamaño"
-              type="number"
-              inputMode="decimal"
-              step="any"
-              placeholder="400"
-              {...register('packageSize', {
-                setValueAs: (value: string) =>
-                  value === '' ? undefined : Number(value),
-              })}
-            />
-            <Select label="Unidad" {...register('unit')}>
-              {UNIT_OPTIONS.map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </div>
+          <Select label="Unidad" {...register('unit')}>
+            {UNIT_OPTIONS.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
         </>
       )}
 

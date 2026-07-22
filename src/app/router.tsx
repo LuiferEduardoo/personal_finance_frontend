@@ -41,6 +41,16 @@ const InflationPage = lazy(() =>
     default: module.InflationPage,
   })),
 )
+const AccountsPage = lazy(() =>
+  import('@/features/accounts/AccountsPage').then((module) => ({
+    default: module.AccountsPage,
+  })),
+)
+const RecurringPage = lazy(() =>
+  import('@/features/recurring/RecurringPage').then((module) => ({
+    default: module.RecurringPage,
+  })),
+)
 const SettingsPage = lazy(() =>
   import('@/features/settings/SettingsPage').then((module) => ({
     default: module.SettingsPage,
@@ -122,6 +132,22 @@ export const router = createBrowserRouter([
             element: (
               <Lazy>
                 <CategoriesPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/cuentas',
+            element: (
+              <Lazy>
+                <AccountsPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/recurrentes',
+            element: (
+              <Lazy>
+                <RecurringPage />
               </Lazy>
             ),
           },

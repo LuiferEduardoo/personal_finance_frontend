@@ -12,6 +12,13 @@ const config: CodegenConfig = {
   generates: {
     './src/graphql/generated/': {
       preset: 'client',
+      presetConfig: {
+        // Sin fragment-masking: los spreads de fragmentos inlinean sus campos en
+        // el tipo de la query, así que se leen directamente (no usamos el patrón
+        // useFragment en ningún sitio). Los fragmentos aquí solo evitan repetir
+        // las selecciones de gasto/ingreso.
+        fragmentMasking: false,
+      },
       config: {
         // Las fechas del backend son strings YYYY-MM-DD / YYYY-MM, no Date.
         scalars: {

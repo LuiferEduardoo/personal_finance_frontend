@@ -1,10 +1,11 @@
 import { graphql } from '@/graphql/generated'
 
 /**
- * Todo el módulo de productos usa el token: no lleva `userId`.
+ * Inventario. Un "producto" es un artículo `type: PRODUCT`; el tipo GraphQL que
+ * devuelven estos endpoints es `Article` (ya no existe `Product`). Todos los
+ * args de inventario son `articleId`. Usan token, no `userId`.
  *
- * `inStock` responde a "¿hay champú?": es true si el producto tiene un ciclo de
- * consumo abierto.
+ * `inStock` = "¿hay?": true si el artículo tiene un ciclo de consumo abierto.
  */
 export const ProductsQuery = graphql(`
   query Products($search: String, $includeInactive: Boolean) {
@@ -19,11 +20,6 @@ export const ProductsQuery = graphql(`
       isActive
       inStock
       notes
-      articleId
-      article {
-        id
-        name
-      }
       category {
         id
         name
@@ -36,7 +32,7 @@ export const ProductsQuery = graphql(`
 export const ProductStatsQuery = graphql(`
   query ProductStats {
     productStats {
-      productId
+      articleId
       name
       closedCycles
       avgDaysLasted
@@ -50,8 +46,8 @@ export const ProductStatsQuery = graphql(`
 `)
 
 export const ProductPurchasesQuery = graphql(`
-  query ProductPurchases($productId: ID) {
-    productPurchases(productId: $productId) {
+  query ProductPurchases($articleId: ID) {
+    productPurchases(articleId: $articleId) {
       id
       purchasedOn
       quantity
@@ -59,7 +55,7 @@ export const ProductPurchasesQuery = graphql(`
       totalPrice
       store
       expenseId
-      product {
+      article {
         id
         name
       }
@@ -68,8 +64,8 @@ export const ProductPurchasesQuery = graphql(`
 `)
 
 export const ConsumptionCyclesQuery = graphql(`
-  query ConsumptionCycles($productId: ID!) {
-    consumptionCycles(productId: $productId) {
+  query ConsumptionCycles($articleId: ID!) {
+    consumptionCycles(articleId: $articleId) {
       id
       startedOn
       depletedOn
@@ -81,9 +77,8 @@ export const ConsumptionCyclesQuery = graphql(`
 `)
 
 /**
- * Registrar una compra tiene efectos en cadena: abre ciclo si no había,
- * marca como comprados los ítems pendientes de la lista, y calcula totalPrice.
- * Por eso la respuesta incluye `product { inStock }`.
+ * Compra manual. Abre/reabre el ciclo de consumo del producto → `inStock: true`.
+ * `articleId` **o** `newArticle`, nunca ambos.
  */
 export const RegisterProductPurchaseMutation = graphql(`
   mutation RegisterProductPurchase($input: RegisterProductPurchaseInput!) {
@@ -94,7 +89,7 @@ export const RegisterProductPurchaseMutation = graphql(`
       unitPrice
       totalPrice
       store
-      product {
+      article {
         id
         name
         inStock
@@ -104,8 +99,8 @@ export const RegisterProductPurchaseMutation = graphql(`
 `)
 
 export const MarkProductDepletedMutation = graphql(`
-  mutation MarkProductDepleted($productId: ID!, $depletedOn: String) {
-    markProductDepleted(productId: $productId, depletedOn: $depletedOn) {
+  mutation MarkProductDepleted($articleId: ID!, $depletedOn: String) {
+    markProductDepleted(articleId: $articleId, depletedOn: $depletedOn) {
       id
       name
       inStock
@@ -113,16 +108,18 @@ export const MarkProductDepletedMutation = graphql(`
   }
 `)
 
-export const CreateProductMutation = graphql(`
-  mutation CreateProduct($input: CreateProductInput!) {
-    createProduct(input: $input) {
+/** Edita el artículo-producto. Acepta campos de inventario (packageSize, etc.). */
+export const UpdateProductMutation = graphql(`
+  mutation UpdateProduct($input: UpdateProductInput!) {
+    updateProduct(input: $input) {
       id
       name
       brand
+      packageSize
       unit
+      barcode
       isConsumable
       isActive
-      inStock
     }
   }
 `)

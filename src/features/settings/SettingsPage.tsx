@@ -21,30 +21,41 @@ export function SettingsPage() {
         </dl>
       )}
 
-      {/* Las categorías se gestionan poco, así que no ocupan sitio en la tab bar. */}
-      <Link
-        to="/categorias"
-        className="border-border bg-surface-raised hover:bg-surface-sunken mt-4 flex min-h-11 items-center justify-between rounded-lg border px-4 py-3"
-      >
-        <span className="text-ink text-sm font-medium">Categorías</span>
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          className="text-ink-muted size-5"
-        >
-          <path d="m9 6 6 6-6 6" />
-        </svg>
-      </Link>
+      {/* Cuentas, categorías y recurrentes se gestionan poco: no ocupan sitio en
+          la tab bar y viven aquí. */}
+      <div className="mt-4 flex flex-col gap-2">
+        <SettingsLink to="/cuentas" label="Cuentas" />
+        <SettingsLink to="/categorias" label="Categorías" />
+        <SettingsLink to="/recurrentes" label="Gastos recurrentes" />
+      </div>
 
       <Button variant="secondary" onClick={() => void logout()} className="mt-6">
         Cerrar sesión
       </Button>
     </div>
+  )
+}
+
+function SettingsLink({ to, label }: { to: string; label: string }) {
+  return (
+    <Link
+      to={to}
+      className="border-border bg-surface-raised hover:bg-surface-sunken flex min-h-11 items-center justify-between rounded-lg border px-4 py-3"
+    >
+      <span className="text-ink text-sm font-medium">{label}</span>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        className="text-ink-muted size-5"
+      >
+        <path d="m9 6 6 6-6 6" />
+      </svg>
+    </Link>
   )
 }
 

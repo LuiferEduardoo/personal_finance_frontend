@@ -8,20 +8,24 @@ Dashboard web para una aplicación de **gestión de gastos personales**. Es solo
 
 Funcionalidad que debe cubrir el dashboard:
 
-- Registro y consulta de **gastos** e **ingresos**, con filtros por rango de fechas y categoría.
-- Al registrar un gasto, vincular o crear un **artículo** (catálogo de lo que se compra) con su cantidad.
+- Registro y consulta de **gastos** e **ingresos**, con filtros por rango de fechas, categoría y **cuenta**.
+- Un gasto puede llevar una **lista de ítems** (artículo + precio + cantidad); su importe se calcula de los ítems.
+- **Cuentas** (banco, efectivo, tarjeta, billetera) con datos de crédito para tarjetas.
+- **Gastos recurrentes**: plantillas que generan gastos (con generación manual "vencidos").
 - **Categorías** propias y del sistema, con jerarquía padre/hijo.
 - **Inflación**: dos métricas separadas en pestañas — precios (`articleInflation`) y variación de gasto (`expenseInflation`).
-- **Catálogo de productos** con inventario (`inStock`), historial de compras, ciclos de consumo y predicción de agotamiento.
+- **Inventario** de artículos tipo `PRODUCT` (`inStock`), historial de compras, ciclos de consumo y predicción.
 
-## Artículos y su efecto en el inventario
+## Modelo de datos: cuentas, gastos multi-ítem, artículos e inventario
 
-Un **artículo** es lo que se compra (`PRODUCT` / `SERVICE` / `OTHER`); un **producto** es la ficha de inventario de un artículo tipo `PRODUCT`. El frontend **no** tiene pantalla de gestión de artículos: se usan y se crean solo desde el modal de gasto ([ArticleField.tsx](src/features/articles/ArticleField.tsx), un combobox "elegir o crear").
-
-- `CreateExpenseInput`/`UpdateExpenseInput` aceptan `articleId` **o** `newArticle`, nunca ambos (`BAD_REQUEST` "Envía solo uno...", verificado). El XOR se garantiza en cliente con `ArticleSelection` discriminado y `buildArticleInput` ([article.ts](src/features/articles/article.ts)).
-- `unitPrice = amount / quantity`; el backend lo devuelve calculado, el form lo muestra en vivo (`computeUnitPrice`, `null` si cantidad ≤ 0).
-- **Efecto colateral clave** (verificado contra el backend): un gasto con `newArticle`/`articleId` de tipo `PRODUCT` crea/reabre un producto y lo deja `inStock: true`, **sin pasar por las mutaciones de productos**. Por eso `createExpense`/`updateExpense` evictan `products`/`productStats`/`productPurchases` de la caché cuando `article.type === 'PRODUCT'` (ver `evictInventory` en [TransactionForm.tsx](src/features/transactions/TransactionForm.tsx)).
-- **Las dos inflaciones no son comparables**: precios da ~IPC (~10 %), gasto da porcentajes grandes. Van en pestañas separadas y cada una explica qué mide ([InflationPage.tsx](src/features/inflation/InflationPage.tsx)).
+- **`accountId` en todos los movimientos** (gastos, ingresos, recurrentes y filtros); las respuestas traen `account { ... }`. El antiguo `paymentMethodId` ya no existe. Selector reutilizable [AccountSelect.tsx](src/features/accounts/AccountSelect.tsx).
+- **Un gasto es multi-ítem**: `Expense` ya **no** tiene `article`/`quantity`/`unitPrice`; viven en `items[]` (`ExpenseItem`: `unitPrice`, `quantity`, `subtotal`, `article`). Con ítems, `amount` **no se envía** (lo calcula el backend como suma de subtotales); sin ítems, `amount` es obligatorio. El backend valida "importe **o** al menos un ítem" (`BAD_REQUEST`, verificado). Modelo de filas y helpers en [items.ts](src/features/transactions/items.ts); UI en [ExpenseItemsEditor.tsx](src/features/transactions/ExpenseItemsEditor.tsx).
+- Cada ítem lleva `articleId` **o** `newArticle`, nunca ambos (`BAD_REQUEST` "Envía solo uno...", verificado). XOR garantizado en cliente con `ArticleSelection` + `buildArticleInput` ([article.ts](src/features/articles/article.ts)). El selector combobox "elegir o crear" es [ArticleField.tsx](src/features/articles/ArticleField.tsx).
+- **`Product` como tipo GraphQL no existe**: `products`/`product`/`updateProduct` devuelven `Article`; los args de inventario son `articleId` (no `productId`), y `productStats` es `ProductStatsView` keyed por `articleId`.
+- **`CreateArticleInput` NO acepta `packageSize`/`barcode`/`isConsumable`** (sí `UpdateProductInput`, al editar producto). Los nombres de artículo son **únicos por usuario**: `newArticle` con un nombre existente falla con `INTERNAL_SERVER_ERROR` (constraint de Postgres), no `BAD_REQUEST` — por eso el combobox prioriza elegir el existente.
+- **Efecto inventario** (verificado): un gasto con un ítem de tipo `PRODUCT` crea/reabre el producto y lo deja `inStock: true` **sin pasar por las mutaciones de producto**. `createExpense`/`updateExpense` evictan `products`/`productStats`/`productPurchases`/`consumptionCycles` cuando algún ítem es producto (`evictInventory` en [TransactionForm.tsx](src/features/transactions/TransactionForm.tsx)).
+- **Recurrentes**: `recurrence` obligatorio y **no puede ser `ONCE`** (`BAD_REQUEST`, verificado); `startOn` obligatorio, `endOn` opcional, `nextRunOn` lo maneja el backend. `runDueRecurringExpenses` genera los vencidos. Sus ítems son `RecurringExpenseItem` (**sin `subtotal`**).
+- **Las dos inflaciones no son comparables**: precios ~IPC (~10 %), gasto porcentajes grandes. Pestañas separadas ([InflationPage.tsx](src/features/inflation/InflationPage.tsx)). `expenseInflation` recibe solo `filter` (no `userId`).
 
 ## Stack
 

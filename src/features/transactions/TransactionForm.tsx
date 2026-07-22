@@ -5,16 +5,21 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Button } from '@/components/Button'
 import { Field } from '@/components/Field'
-import {
-  buildArticleInput,
-  computeUnitPrice,
-  type ArticleSelection,
-} from '@/features/articles/article'
-import { ArticleField } from '@/features/articles/ArticleField'
+import { Select } from '@/components/Select'
+import { AccountSelect } from '@/features/accounts/AccountSelect'
 import { useCurrentUserId } from '@/features/auth/SessionContext'
+import { useCategories } from '@/features/categories/useCategories'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import { todayIso } from '@/lib/dates'
 import { formatAmount } from '@/lib/money'
+import { ExpenseItemsEditor } from './ExpenseItemsEditor'
+import {
+  buildItemsInput,
+  isRowComplete,
+  itemsTotal,
+  rowsFromItems,
+  type ItemRow,
+} from './items'
 import {
   CreateExpenseMutation,
   CreateIncomeMutation,
@@ -24,51 +29,39 @@ import {
 import type { Transaction } from './types'
 
 /**
- * Las reglas replican las del backend: descripción y fecha obligatorias,
- * importe mayor que 0. Validar aquí evita un viaje al servidor para saber algo
- * que ya sabemos.
+ * Reglas espejadas del backend: descripción y fecha obligatorias; y un gasto
+ * necesita **importe O al menos un ítem** (`amount` no se envía cuando hay
+ * ítems, el backend lo calcula como la suma de subtotales). El importe manual,
+ * cuando aplica, debe ser > 0.
  */
 const schema = z.object({
   description: z.string().min(1, 'La descripción es obligatoria'),
-  amount: z
-    .number({ error: 'Introduce un importe' })
-    .positive('El importe debe ser mayor que 0'),
+  amount: z.number().positive('El importe debe ser mayor que 0').optional(),
   occurredOn: z.string().min(1, 'La fecha es obligatoria'),
   categoryId: z.string().optional(),
+  accountId: z.string().optional(),
   counterparty: z.string().optional(),
   notes: z.string().optional(),
-  // Solo aplica a gastos. Default 1; el precio unitario se calcula con ella.
-  quantity: z.number().positive('Debe ser mayor que 0').optional(),
 })
 
+type FormValues = z.infer<typeof schema>
+
 /**
- * Un gasto con artículo tipo PRODUCT crea/reabre un producto por debajo, sin
- * pasar por las mutaciones de productos (verificado contra el backend). Sin
- * invalidar, la pantalla Productos mostraría un `inStock` viejo. Se evictan los
- * campos raíz de inventario para que se refetcheen al volver a esa pantalla;
- * invalidación perezosa, no un refetch inmediato de algo que quizá no se ve.
+ * Un gasto con un ítem de artículo tipo PRODUCT crea/reabre un producto por
+ * debajo, sin pasar por las mutaciones de productos (verificado). Se evictan los
+ * campos raíz de inventario para que se refetcheen al volver a esa pantalla.
  */
 function evictInventory(cache: ApolloCache<unknown>): void {
-  for (const fieldName of ['products', 'productStats', 'productPurchases']) {
+  for (const fieldName of [
+    'products',
+    'productStats',
+    'productPurchases',
+    'consumptionCycles',
+  ]) {
     cache.evict({ id: 'ROOT_QUERY', fieldName })
   }
   cache.gc()
 }
-
-/** Selección inicial del artículo al abrir el formulario (vacía o desde la edición). */
-function initialArticleSelection(transaction?: Transaction): ArticleSelection {
-  if (transaction?.articleId && transaction.articleName) {
-    return {
-      mode: 'existing',
-      articleId: transaction.articleId,
-      label: transaction.articleName,
-      type: transaction.articleType ?? 'PRODUCT',
-    }
-  }
-  return { mode: 'none' }
-}
-
-type FormValues = z.infer<typeof schema>
 
 type TransactionFormProps = {
   kind: Transaction['kind']
@@ -82,18 +75,18 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
   const isIncome = kind === 'INCOME'
   const isEditing = transaction != null
   const [formError, setFormError] = useState<string | null>(null)
-  const [article, setArticle] = useState<ArticleSelection>(() =>
-    initialArticleSelection(transaction),
+
+  // Los ítems (solo gastos) viven fuera de RHF: son un array de objetos con su
+  // propia UI de selección de artículo.
+  const [rows, setRows] = useState<ItemRow[]>(() =>
+    isIncome ? [] : rowsFromItems(transaction?.items ?? []),
   )
 
-  // Tras crear o editar hay que refrescar las listas. Se refresca POR NOMBRE de
-  // operación, no con variables fijas: la lista visible se consulta con el filtro
-  // activo (from/to/categoría), que la caché indexa por keyArgs; refrescar
-  // `filter: {}` actualizaría una entrada que nadie observa y la pantalla no
-  // cambiaría. El nombre refresca todas las instancias activas, sea cual sea su
-  // filtro.
-  const refetchQueries = ['Expenses', 'Incomes']
+  const { tree, loading: loadingCategories } = useCategories(kind)
 
+  // Refresco por NOMBRE de operación: alcanza la lista con su filtro activo, no
+  // una entrada de caché `filter: {}` que nadie observa.
+  const refetchQueries = ['Expenses', 'Incomes']
   const [createExpense] = useMutation(CreateExpenseMutation, { refetchQueries })
   const [createIncome] = useMutation(CreateIncomeMutation, { refetchQueries })
   const [updateExpense] = useMutation(UpdateExpenseMutation, { refetchQueries })
@@ -103,6 +96,7 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -111,84 +105,79 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
       amount: transaction?.amount,
       occurredOn: transaction?.occurredOn ?? todayIso(),
       categoryId: transaction?.categoryId ?? '',
+      accountId: transaction?.accountId ?? '',
       counterparty: transaction?.counterparty ?? '',
       notes: transaction?.notes ?? '',
-      quantity: transaction?.quantity ?? 1,
     },
   })
 
-  // Precio unitario en vivo, como feedback mientras se escribe. El backend lo
-  // recalcula al guardar; esto solo evita que el usuario tenga que hacer la
-  // división mental.
-  const liveUnitPrice = computeUnitPrice(watch('amount'), watch('quantity'))
+  const hasItems = !isIncome && rows.length > 0
+  const currency = transaction?.currency ?? 'COP'
+  const computedAmount = itemsTotal(rows)
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null)
-    // Un campo opcional vacío es "no informado", no cadena vacía.
     const optional = (value: string | undefined) => value?.trim() || undefined
 
-    // Campos exclusivos de gasto: artículo y cantidad. El artículo puede crear
-    // un producto por debajo, así que invalidamos su caché (ver más abajo).
-    const expenseExtras = {
-      ...buildArticleInput(article),
-      quantity: values.quantity ?? undefined,
+    // Validación cruzada que zod no cubre bien: importe manual O ítems.
+    if ((isIncome || !hasItems) && values.amount == null) {
+      setFormError('Introduce un importe o añade al menos un ítem.')
+      return
+    }
+    if (!isIncome && hasItems && !rows.every(isRowComplete)) {
+      setFormError('Cada ítem necesita un artículo y su precio unitario.')
+      return
+    }
+
+    const commonBase = {
+      description: values.description,
+      occurredOn: values.occurredOn,
+      categoryId: optional(values.categoryId),
+      accountId: optional(values.accountId),
+      notes: optional(values.notes),
     }
 
     try {
+      if (isIncome) {
+        // amount está garantizado por la validación de arriba.
+        const input = {
+          ...commonBase,
+          amount: values.amount ?? 0,
+          source: optional(values.counterparty),
+        }
+        if (isEditing) {
+          await updateIncome({ variables: { input: { id: transaction.id, ...input } } })
+        } else {
+          await createIncome({ variables: { input: { userId, ...input } } })
+        }
+        onDone()
+        return
+      }
+
+      // Gasto: con ítems se envía `items` y NO `amount` (lo calcula el backend).
+      const expenseInput = {
+        ...commonBase,
+        merchant: optional(values.counterparty),
+        ...(hasItems ? { items: buildItemsInput(rows) } : { amount: values.amount }),
+      }
+      // Si algún ítem es de tipo producto, el inventario cambió por debajo.
+      const touchedProduct = rows.some(
+        (row) => row.article.mode !== 'none' && row.article.type === 'PRODUCT',
+      )
+      const update = touchedProduct
+        ? (cache: ApolloCache<unknown>) => evictInventory(cache)
+        : undefined
+
       if (isEditing) {
-        const base = {
-          id: transaction.id,
-          description: values.description,
-          amount: values.amount,
-          occurredOn: values.occurredOn,
-          categoryId: optional(values.categoryId),
-          notes: optional(values.notes),
-        }
-        if (isIncome) {
-          await updateIncome({
-            variables: { input: { ...base, source: optional(values.counterparty) } },
-          })
-        } else {
-          await updateExpense({
-            variables: {
-              input: {
-                ...base,
-                merchant: optional(values.counterparty),
-                ...expenseExtras,
-              },
-            },
-            update: (cache, { data }) => {
-              if (data?.updateExpense.article?.type === 'PRODUCT') evictInventory(cache)
-            },
-          })
-        }
+        await updateExpense({
+          variables: { input: { id: transaction.id, ...expenseInput } },
+          update,
+        })
       } else {
-        const base = {
-          userId,
-          description: values.description,
-          amount: values.amount,
-          occurredOn: values.occurredOn,
-          categoryId: optional(values.categoryId),
-          notes: optional(values.notes),
-        }
-        if (isIncome) {
-          await createIncome({
-            variables: { input: { ...base, source: optional(values.counterparty) } },
-          })
-        } else {
-          await createExpense({
-            variables: {
-              input: {
-                ...base,
-                merchant: optional(values.counterparty),
-                ...expenseExtras,
-              },
-            },
-            update: (cache, { data }) => {
-              if (data?.createExpense.article?.type === 'PRODUCT') evictInventory(cache)
-            },
-          })
-        }
+        await createExpense({
+          variables: { input: { userId, ...expenseInput } },
+          update,
+        })
       }
       onDone()
     } catch (error) {
@@ -199,37 +188,6 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-      {!isIncome && (
-        <>
-          <ArticleField value={article} onChange={setArticle} />
-
-          {article.mode !== 'none' && (
-            <>
-              <Field
-                label="Cantidad"
-                type="number"
-                inputMode="decimal"
-                step="any"
-                min="0"
-                error={errors.quantity?.message}
-                {...register('quantity', {
-                  setValueAs: (value: string) =>
-                    value === '' ? undefined : Number(value),
-                })}
-              />
-
-              {liveUnitPrice != null && (
-                <p className="text-ink-secondary text-sm">
-                  Precio unitario:{' '}
-                  <span className="tabular text-ink font-medium">
-                    {formatAmount(liveUnitPrice, transaction?.currency ?? 'COP')}
-                  </span>
-                </p>
-              )}
-            </>
-          )}
-        </>
-      )}
       <Field
         label="Descripción"
         placeholder={isIncome ? 'Pago nómina julio' : 'Mercado semana'}
@@ -237,17 +195,29 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
         {...register('description')}
       />
 
-      <Field
-        label="Importe"
-        type="number"
-        // `inputMode decimal` abre el teclado numérico en móvil.
-        inputMode="decimal"
-        step="any"
-        min="0"
-        placeholder="0"
-        error={errors.amount?.message}
-        {...register('amount', { valueAsNumber: true })}
-      />
+      {/* Con ítems el importe es la suma de subtotales, de solo lectura. */}
+      {hasItems ? (
+        <div>
+          <span className="text-ink-secondary block text-sm font-medium">Importe</span>
+          <p className="tabular text-ink mt-1.5 text-lg font-medium">
+            {formatAmount(computedAmount, currency)}
+          </p>
+          <p className="text-ink-muted mt-0.5 text-xs">Suma de los ítems.</p>
+        </div>
+      ) : (
+        <Field
+          label="Importe"
+          type="number"
+          inputMode="decimal"
+          step="any"
+          min="0"
+          placeholder="0"
+          error={errors.amount?.message}
+          {...register('amount', {
+            setValueAs: (value: string) => (value === '' ? undefined : Number(value)),
+          })}
+        />
+      )}
 
       <Field
         label="Fecha"
@@ -256,8 +226,34 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
         {...register('occurredOn')}
       />
 
-      {/* El artículo y la cantidad son exclusivos de gastos: un ingreso no
-          compra nada del catálogo. */}
+      <AccountSelect
+        value={watch('accountId') ?? ''}
+        onChange={(accountId) => setValue('accountId', accountId)}
+        label={isIncome ? 'Cuenta destino (opcional)' : 'Cuenta (opcional)'}
+      />
+
+      <Select
+        label="Categoría (opcional)"
+        disabled={loadingCategories}
+        error={errors.categoryId?.message}
+        {...register('categoryId')}
+      >
+        <option value="">
+          {hasItems && rows.length === 1 ? 'Se hereda del artículo' : 'Sin categoría'}
+        </option>
+        {tree.map(({ category, depth }) => (
+          <option key={category.id} value={category.id}>
+            {depth > 0 ? '  ' : ''}
+            {category.icon ? `${category.icon} ` : ''}
+            {category.name}
+          </option>
+        ))}
+      </Select>
+
+      {/* Los ítems son exclusivos de gastos: un ingreso no compra del catálogo. */}
+      {!isIncome && (
+        <ExpenseItemsEditor rows={rows} onChange={setRows} currency={currency} />
+      )}
 
       <Field
         label={isIncome ? 'Fuente (opcional)' : 'Comercio (opcional)'}

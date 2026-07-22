@@ -1,37 +1,81 @@
 import { graphql } from '@/graphql/generated'
 
 /**
- * Gastos e ingresos comparten casi todos los campos; los ingresos añaden
- * `source` y los gastos `merchant`. Se consultan por separado porque el
- * esquema los expone como raíces distintas.
+ * Gastos e ingresos comparten cabecera (importe, fecha, cuenta, categoría). El
+ * gasto añade `merchant` y una lista de `items`; el ingreso añade `source` y no
+ * tiene ítems. Los campos comunes viven en fragmentos para no repetirlos.
+ *
+ * El gasto pasó de "un artículo + cantidad" a **una lista de ítems**: `article`,
+ * `quantity` y `unitPrice` ya no están en el gasto, sino en `items[]`.
  */
 
-export const ExpensesQuery = graphql(`
-  query Expenses($userId: ID!, $filter: TransactionsFilterInput) {
-    expenses(userId: $userId, filter: $filter) {
+export const ExpenseFields = graphql(`
+  fragment ExpenseFields on Expense {
+    id
+    description
+    amount
+    currency
+    exchangeRate
+    occurredOn
+    merchant
+    notes
+    recurrence
+    accountId
+    account {
       id
-      description
-      amount
-      currency
-      exchangeRate
-      occurredOn
-      merchant
-      notes
-      recurrence
-      quantity
-      unitPrice
-      categoryId
-      category {
-        id
-        name
-        icon
-      }
+      name
+    }
+    categoryId
+    category {
+      id
+      name
+      icon
+    }
+    items {
+      id
       articleId
+      description
+      unitPrice
+      quantity
+      subtotal
       article {
         id
         name
         type
       }
+    }
+  }
+`)
+
+export const IncomeFields = graphql(`
+  fragment IncomeFields on Income {
+    id
+    description
+    amount
+    currency
+    exchangeRate
+    occurredOn
+    source
+    notes
+    recurrence
+    accountId
+    account {
+      id
+      name
+    }
+    categoryId
+    category {
+      id
+      name
+      icon
+    }
+  }
+`)
+
+export const ExpensesQuery = graphql(`
+  query Expenses($userId: ID!, $filter: TransactionsFilterInput) {
+    expenses(userId: $userId, filter: $filter) {
+      ...ExpenseFields
     }
   }
 `)
@@ -39,21 +83,7 @@ export const ExpensesQuery = graphql(`
 export const IncomesQuery = graphql(`
   query Incomes($userId: ID!, $filter: TransactionsFilterInput) {
     incomes(userId: $userId, filter: $filter) {
-      id
-      description
-      amount
-      currency
-      exchangeRate
-      occurredOn
-      source
-      notes
-      recurrence
-      categoryId
-      category {
-        id
-        name
-        icon
-      }
+      ...IncomeFields
     }
   }
 `)
@@ -61,29 +91,7 @@ export const IncomesQuery = graphql(`
 export const CreateExpenseMutation = graphql(`
   mutation CreateExpense($input: CreateExpenseInput!) {
     createExpense(input: $input) {
-      id
-      description
-      amount
-      currency
-      exchangeRate
-      occurredOn
-      merchant
-      notes
-      recurrence
-      quantity
-      unitPrice
-      categoryId
-      category {
-        id
-        name
-        icon
-      }
-      articleId
-      article {
-        id
-        name
-        type
-      }
+      ...ExpenseFields
     }
   }
 `)
@@ -91,21 +99,7 @@ export const CreateExpenseMutation = graphql(`
 export const CreateIncomeMutation = graphql(`
   mutation CreateIncome($input: CreateIncomeInput!) {
     createIncome(input: $input) {
-      id
-      description
-      amount
-      currency
-      exchangeRate
-      occurredOn
-      source
-      notes
-      recurrence
-      categoryId
-      category {
-        id
-        name
-        icon
-      }
+      ...IncomeFields
     }
   }
 `)
@@ -113,29 +107,7 @@ export const CreateIncomeMutation = graphql(`
 export const UpdateExpenseMutation = graphql(`
   mutation UpdateExpense($input: UpdateExpenseInput!) {
     updateExpense(input: $input) {
-      id
-      description
-      amount
-      currency
-      exchangeRate
-      occurredOn
-      merchant
-      notes
-      recurrence
-      quantity
-      unitPrice
-      categoryId
-      category {
-        id
-        name
-        icon
-      }
-      articleId
-      article {
-        id
-        name
-        type
-      }
+      ...ExpenseFields
     }
   }
 `)
@@ -143,21 +115,7 @@ export const UpdateExpenseMutation = graphql(`
 export const UpdateIncomeMutation = graphql(`
   mutation UpdateIncome($input: UpdateIncomeInput!) {
     updateIncome(input: $input) {
-      id
-      description
-      amount
-      currency
-      exchangeRate
-      occurredOn
-      source
-      notes
-      recurrence
-      categoryId
-      category {
-        id
-        name
-        icon
-      }
+      ...IncomeFields
     }
   }
 `)

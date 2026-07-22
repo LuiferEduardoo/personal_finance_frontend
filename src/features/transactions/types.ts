@@ -8,12 +8,27 @@ import type { MoneyDirection } from '@/lib/money'
 export type Expense = ExpensesQuery['expenses'][number]
 export type Income = IncomesQuery['incomes'][number]
 
+/** Una línea de un gasto: un artículo comprado con su precio y cantidad. */
+export type TransactionItem = {
+  id: string
+  articleId: string | null
+  articleName: string | null
+  articleType: ArticleType | null
+  description: string | null
+  unitPrice: number | null
+  quantity: number
+  subtotal: number
+}
+
 /**
  * Vista unificada de gastos e ingresos para las listas.
  *
  * `kind` conserva el origen: es lo que decide a qué mutación va una edición y
  * de qué color y signo se pinta el importe. Nunca se infiere del signo del
  * importe — el backend guarda ambos como positivos.
+ *
+ * Los gastos pueden llevar `items` (desde el rediseño multi-artículo); los
+ * ingresos nunca.
  */
 export type Transaction = {
   id: string
@@ -29,12 +44,9 @@ export type Transaction = {
   categoryId: string | null
   categoryName: string | null
   categoryIcon: string | null
-  /** Artículo vinculado y cantidad. Solo gastos; en ingresos van en null. */
-  articleId: string | null
-  articleName: string | null
-  articleType: ArticleType | null
-  quantity: number | null
-  unitPrice: number | null
+  accountId: string | null
+  accountName: string | null
+  items: TransactionItem[]
 }
 
 export function directionOf(kind: Transaction['kind']): MoneyDirection {
@@ -55,11 +67,18 @@ export function expenseToTransaction(expense: Expense): Transaction {
     categoryId: expense.categoryId ?? null,
     categoryName: expense.category?.name ?? null,
     categoryIcon: expense.category?.icon ?? null,
-    articleId: expense.articleId ?? null,
-    articleName: expense.article?.name ?? null,
-    articleType: expense.article?.type ?? null,
-    quantity: expense.quantity ?? null,
-    unitPrice: expense.unitPrice ?? null,
+    accountId: expense.accountId ?? null,
+    accountName: expense.account?.name ?? null,
+    items: (expense.items ?? []).map((item) => ({
+      id: item.id,
+      articleId: item.articleId ?? null,
+      articleName: item.article?.name ?? null,
+      articleType: item.article?.type ?? null,
+      description: item.description ?? null,
+      unitPrice: item.unitPrice ?? null,
+      quantity: item.quantity,
+      subtotal: item.subtotal,
+    })),
   }
 }
 
@@ -77,11 +96,9 @@ export function incomeToTransaction(income: Income): Transaction {
     categoryId: income.categoryId ?? null,
     categoryName: income.category?.name ?? null,
     categoryIcon: income.category?.icon ?? null,
-    // Los ingresos no llevan artículo.
-    articleId: null,
-    articleName: null,
-    articleType: null,
-    quantity: null,
-    unitPrice: null,
+    accountId: income.accountId ?? null,
+    accountName: income.account?.name ?? null,
+    // Los ingresos no llevan ítems.
+    items: [],
   }
 }

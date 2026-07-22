@@ -33,7 +33,7 @@ export function ProductsPage() {
   const products = useMemo(() => data?.products ?? [], [data?.products])
   const statsByProduct = useMemo(() => {
     const map = new Map<string, NonNullable<typeof statsData>['productStats'][number]>()
-    for (const stat of statsData?.productStats ?? []) map.set(stat.productId, stat)
+    for (const stat of statsData?.productStats ?? []) map.set(stat.articleId, stat)
     return map
   }, [statsData?.productStats])
 
@@ -58,18 +58,18 @@ export function ProductsPage() {
     ],
   })
 
-  const handleDepleted = async (productId: string, name: string) => {
+  const handleDepleted = async (articleId: string, name: string) => {
     if (!window.confirm(`¿Marcar "${name}" como agotado?`)) return
     setActionError(null)
     try {
-      await markDepleted({ variables: { productId, depletedOn: null } })
+      await markDepleted({ variables: { articleId, depletedOn: null } })
     } catch (caught) {
       setActionError(getFirstErrorMessage(caught))
     }
   }
 
-  const openPurchase = (productId?: string) => {
-    setBuyingProductId(productId)
+  const openPurchase = (articleId?: string) => {
+    setBuyingProductId(articleId)
     setIsBuying(true)
   }
 
@@ -161,11 +161,6 @@ export function ProductsPage() {
                       <p className="text-ink-muted mt-0.5 text-xs">
                         {formatPackage(product.packageSize, product.unit)}
                         {product.category && ` · ${product.category.name}`}
-                        {/* El artículo suele llamarse igual que el producto; solo
-                            se muestra cuando aporta algo distinto. */}
-                        {product.article && product.article.name !== product.name && (
-                          <> · Artículo: {product.article.name}</>
-                        )}
                       </p>
                     </div>
                     <StockBadge
@@ -295,7 +290,7 @@ function PurchaseHistory({ currency }: { currency: string }) {
           <tbody className="divide-border divide-y">
             {purchases.slice(0, 10).map((purchase) => (
               <tr key={purchase.id}>
-                <td className="text-ink px-4 py-2.5">{purchase.product.name}</td>
+                <td className="text-ink px-4 py-2.5">{purchase.article.name}</td>
                 <td className="text-ink-secondary px-4 py-2.5 whitespace-nowrap">
                   {formatDate(purchase.purchasedOn)}
                 </td>
