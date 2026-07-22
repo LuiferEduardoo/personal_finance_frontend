@@ -18,7 +18,10 @@ type Documents = {
     "\n  mutation CreateAccount($input: CreateAccountInput!) {\n    createAccount(input: $input) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n    }\n  }\n": typeof types.CreateAccountDocument,
     "\n  mutation UpdateAccount($input: UpdateAccountInput!) {\n    updateAccount(input: $input) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n      creditLimit\n      statementDay\n      dueDay\n      monthlyRate\n      issuer\n      lastFour\n    }\n  }\n": typeof types.UpdateAccountDocument,
     "\n  mutation RemoveAccount($id: ID!) {\n    removeAccount(id: $id)\n  }\n": typeof types.RemoveAccountDocument,
-    "\n  query Articles($search: String, $type: ArticleType, $includeInactive: Boolean) {\n    articles(search: $search, type: $type, includeInactive: $includeInactive) {\n      id\n      name\n      type\n      brand\n      unit\n      categoryId\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n": typeof types.ArticlesDocument,
+    "\n  query Articles($search: String, $type: ArticleType, $includeInactive: Boolean) {\n    articles(search: $search, type: $type, includeInactive: $includeInactive) {\n      id\n      name\n      type\n      brand\n      unit\n      packageSize\n      barcode\n      isConsumable\n      inStock\n      isActive\n      notes\n      categoryId\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n": typeof types.ArticlesDocument,
+    "\n  mutation CreateArticle($input: CreateArticleInput!) {\n    createArticle(input: $input) {\n      id\n      name\n      type\n      brand\n      unit\n      isActive\n    }\n  }\n": typeof types.CreateArticleDocument,
+    "\n  mutation UpdateArticle($input: UpdateArticleInput!) {\n    updateArticle(input: $input) {\n      id\n      name\n      type\n      brand\n      unit\n      isActive\n      notes\n      categoryId\n    }\n  }\n": typeof types.UpdateArticleDocument,
+    "\n  mutation RemoveArticle($id: ID!) {\n    removeArticle(id: $id)\n  }\n": typeof types.RemoveArticleDocument,
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      accessToken\n      refreshToken\n      user {\n        id\n        email\n        firstName\n      }\n    }\n  }\n": typeof types.LoginDocument,
     "\n  mutation Register($input: RegisterInput!) {\n    register(input: $input) {\n      accessToken\n      refreshToken\n      user {\n        id\n        email\n        firstName\n      }\n    }\n  }\n": typeof types.RegisterDocument,
     "\n  mutation Logout($refreshToken: String!) {\n    logout(refreshToken: $refreshToken)\n  }\n": typeof types.LogoutDocument,
@@ -60,7 +63,10 @@ const documents: Documents = {
     "\n  mutation CreateAccount($input: CreateAccountInput!) {\n    createAccount(input: $input) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n    }\n  }\n": types.CreateAccountDocument,
     "\n  mutation UpdateAccount($input: UpdateAccountInput!) {\n    updateAccount(input: $input) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n      creditLimit\n      statementDay\n      dueDay\n      monthlyRate\n      issuer\n      lastFour\n    }\n  }\n": types.UpdateAccountDocument,
     "\n  mutation RemoveAccount($id: ID!) {\n    removeAccount(id: $id)\n  }\n": types.RemoveAccountDocument,
-    "\n  query Articles($search: String, $type: ArticleType, $includeInactive: Boolean) {\n    articles(search: $search, type: $type, includeInactive: $includeInactive) {\n      id\n      name\n      type\n      brand\n      unit\n      categoryId\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n": types.ArticlesDocument,
+    "\n  query Articles($search: String, $type: ArticleType, $includeInactive: Boolean) {\n    articles(search: $search, type: $type, includeInactive: $includeInactive) {\n      id\n      name\n      type\n      brand\n      unit\n      packageSize\n      barcode\n      isConsumable\n      inStock\n      isActive\n      notes\n      categoryId\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n": types.ArticlesDocument,
+    "\n  mutation CreateArticle($input: CreateArticleInput!) {\n    createArticle(input: $input) {\n      id\n      name\n      type\n      brand\n      unit\n      isActive\n    }\n  }\n": types.CreateArticleDocument,
+    "\n  mutation UpdateArticle($input: UpdateArticleInput!) {\n    updateArticle(input: $input) {\n      id\n      name\n      type\n      brand\n      unit\n      isActive\n      notes\n      categoryId\n    }\n  }\n": types.UpdateArticleDocument,
+    "\n  mutation RemoveArticle($id: ID!) {\n    removeArticle(id: $id)\n  }\n": types.RemoveArticleDocument,
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      accessToken\n      refreshToken\n      user {\n        id\n        email\n        firstName\n      }\n    }\n  }\n": types.LoginDocument,
     "\n  mutation Register($input: RegisterInput!) {\n    register(input: $input) {\n      accessToken\n      refreshToken\n      user {\n        id\n        email\n        firstName\n      }\n    }\n  }\n": types.RegisterDocument,
     "\n  mutation Logout($refreshToken: String!) {\n    logout(refreshToken: $refreshToken)\n  }\n": types.LogoutDocument,
@@ -131,7 +137,19 @@ export function graphql(source: "\n  mutation RemoveAccount($id: ID!) {\n    rem
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query Articles($search: String, $type: ArticleType, $includeInactive: Boolean) {\n    articles(search: $search, type: $type, includeInactive: $includeInactive) {\n      id\n      name\n      type\n      brand\n      unit\n      categoryId\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n"): (typeof documents)["\n  query Articles($search: String, $type: ArticleType, $includeInactive: Boolean) {\n    articles(search: $search, type: $type, includeInactive: $includeInactive) {\n      id\n      name\n      type\n      brand\n      unit\n      categoryId\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n"];
+export function graphql(source: "\n  query Articles($search: String, $type: ArticleType, $includeInactive: Boolean) {\n    articles(search: $search, type: $type, includeInactive: $includeInactive) {\n      id\n      name\n      type\n      brand\n      unit\n      packageSize\n      barcode\n      isConsumable\n      inStock\n      isActive\n      notes\n      categoryId\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n"): (typeof documents)["\n  query Articles($search: String, $type: ArticleType, $includeInactive: Boolean) {\n    articles(search: $search, type: $type, includeInactive: $includeInactive) {\n      id\n      name\n      type\n      brand\n      unit\n      packageSize\n      barcode\n      isConsumable\n      inStock\n      isActive\n      notes\n      categoryId\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateArticle($input: CreateArticleInput!) {\n    createArticle(input: $input) {\n      id\n      name\n      type\n      brand\n      unit\n      isActive\n    }\n  }\n"): (typeof documents)["\n  mutation CreateArticle($input: CreateArticleInput!) {\n    createArticle(input: $input) {\n      id\n      name\n      type\n      brand\n      unit\n      isActive\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation UpdateArticle($input: UpdateArticleInput!) {\n    updateArticle(input: $input) {\n      id\n      name\n      type\n      brand\n      unit\n      isActive\n      notes\n      categoryId\n    }\n  }\n"): (typeof documents)["\n  mutation UpdateArticle($input: UpdateArticleInput!) {\n    updateArticle(input: $input) {\n      id\n      name\n      type\n      brand\n      unit\n      isActive\n      notes\n      categoryId\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RemoveArticle($id: ID!) {\n    removeArticle(id: $id)\n  }\n"): (typeof documents)["\n  mutation RemoveArticle($id: ID!) {\n    removeArticle(id: $id)\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

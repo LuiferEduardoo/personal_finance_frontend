@@ -106,13 +106,14 @@ function TabBar() {
               end={item.to === '/'}
               className={({ isActive }) =>
                 // min-h-14 mantiene el área táctil por encima de los 44px.
-                `flex min-h-14 flex-col items-center justify-center gap-0.5 text-[0.6875rem] ${
+                `flex min-h-14 flex-col items-center justify-center gap-0.5 px-0.5 text-[0.625rem] ${
                   isActive ? 'text-ink font-medium' : 'text-ink-muted'
                 }`
               }
             >
               {item.icon}
-              {item.label}
+              {/* Con 5 pestañas la etiqueta no debe romper en dos líneas. */}
+              <span className="w-full truncate text-center">{item.label}</span>
             </NavLink>
           </li>
         ))}

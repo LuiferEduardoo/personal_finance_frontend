@@ -1,11 +1,11 @@
 import { graphql } from '@/graphql/generated'
 
 /**
- * Búsqueda de artículos para el selector del formulario de gasto.
- *
- * Es la única operación de artículos que necesita el frontend: la creación se
- * hace con `newArticle` dentro de `CreateExpenseInput`, no con una mutación
- * aparte, y no hay pantalla de gestión. Usa el token, no `userId`.
+ * Catálogo de artículos. Se usa tanto para el selector del formulario de gasto
+ * (búsqueda) como para la pantalla de gestión de Artículos. Usa el token, no
+ * `userId`. Incluye los campos de inventario (`inStock`, `isConsumable`, …) que
+ * la pantalla de Productos necesita — para artículos que no son producto vienen
+ * en null/false, sin coste.
  */
 export const ArticlesQuery = graphql(`
   query Articles($search: String, $type: ArticleType, $includeInactive: Boolean) {
@@ -15,6 +15,12 @@ export const ArticlesQuery = graphql(`
       type
       brand
       unit
+      packageSize
+      barcode
+      isConsumable
+      inStock
+      isActive
+      notes
       categoryId
       category {
         id
@@ -22,5 +28,39 @@ export const ArticlesQuery = graphql(`
         icon
       }
     }
+  }
+`)
+
+export const CreateArticleMutation = graphql(`
+  mutation CreateArticle($input: CreateArticleInput!) {
+    createArticle(input: $input) {
+      id
+      name
+      type
+      brand
+      unit
+      isActive
+    }
+  }
+`)
+
+export const UpdateArticleMutation = graphql(`
+  mutation UpdateArticle($input: UpdateArticleInput!) {
+    updateArticle(input: $input) {
+      id
+      name
+      type
+      brand
+      unit
+      isActive
+      notes
+      categoryId
+    }
+  }
+`)
+
+export const RemoveArticleMutation = graphql(`
+  mutation RemoveArticle($id: ID!) {
+    removeArticle(id: $id)
   }
 `)

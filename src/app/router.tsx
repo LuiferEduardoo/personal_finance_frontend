@@ -1,7 +1,7 @@
 // oxlint-disable react/only-export-components -- un archivo de rutas exporta
 // el router, no componentes; la regla de fast refresh no aplica aquí.
 import { lazy, Suspense, type ReactNode } from 'react'
-import { createBrowserRouter } from 'react-router'
+import { createBrowserRouter, Navigate } from 'react-router'
 import { PagePlaceholder } from '@/components/PagePlaceholder'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
@@ -31,9 +31,9 @@ const CategoriesPage = lazy(() =>
     default: module.CategoriesPage,
   })),
 )
-const ProductsPage = lazy(() =>
-  import('@/features/products/ProductsPage').then((module) => ({
-    default: module.ProductsPage,
+const ArticlesPage = lazy(() =>
+  import('@/features/articles/ArticlesPage').then((module) => ({
+    default: module.ArticlesPage,
   })),
 )
 const InflationPage = lazy(() =>
@@ -112,13 +112,15 @@ export const router = createBrowserRouter([
             ),
           },
           {
-            path: '/productos',
+            path: '/articulos',
             element: (
               <Lazy>
-                <ProductsPage />
+                <ArticlesPage />
               </Lazy>
             ),
           },
+          // La antigua ruta de productos ahora es la pestaña "Productos" de Artículos.
+          { path: '/productos', element: <Navigate to="/articulos" replace /> },
           {
             path: '/inflacion',
             element: (

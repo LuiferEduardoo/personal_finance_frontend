@@ -24,7 +24,6 @@ export function SettingsPage() {
       {/* Cuentas, categorías y recurrentes se gestionan poco: no ocupan sitio en
           la tab bar y viven aquí. */}
       <div className="mt-4 flex flex-col gap-2">
-        <SettingsLink to="/cuentas" label="Cuentas" />
         <SettingsLink to="/categorias" label="Categorías" />
         <SettingsLink to="/recurrentes" label="Gastos recurrentes" />
       </div>

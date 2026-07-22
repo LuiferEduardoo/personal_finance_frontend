@@ -17,7 +17,7 @@ const iconProps = {
   className: 'size-6',
 } as const
 
-/** Cuatro destinos: más no caben cómodamente en una tab bar de móvil. */
+/** Cinco destinos en la tab bar (móvil) / sidebar (desktop). */
 export const NAV_ITEMS: NavItem[] = [
   {
     to: '/',
@@ -40,12 +40,22 @@ export const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    to: '/productos',
-    label: 'Productos',
+    to: '/articulos',
+    label: 'Artículos',
     icon: (
       <svg {...iconProps}>
         <path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z" />
         <path d="M3 8.5 12 13l9-4.5M12 13v7" />
+      </svg>
+    ),
+  },
+  {
+    to: '/cuentas',
+    label: 'Cuentas',
+    icon: (
+      <svg {...iconProps}>
+        <rect x="3" y="6" width="18" height="13" rx="2" />
+        <path d="M3 10h18M7 15h4" />
       </svg>
     ),
   },
