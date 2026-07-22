@@ -21,7 +21,6 @@ import {
   type Account,
 } from './account'
 import {
-  AccountsQuery,
   CreateAccountMutation,
   RecalculateAccountBalanceMutation,
   RemoveAccountMutation,
@@ -280,11 +279,15 @@ function AccountForm({ account, onDone }: { account?: Account; onDone: () => voi
   const isEditing = account != null
   const [formError, setFormError] = useState<string | null>(null)
 
+  // Por NOMBRE de operación: la lista se observa con `includeInactive` variable
+  // (por defecto false), y la caché indexa por ese arg. Refrescar una entrada
+  // fija (`true`) actualizaría algo que nadie observa y la cuenta nueva no
+  // aparecería hasta recargar. El nombre refresca la instancia activa.
   const [createAccount] = useMutation(CreateAccountMutation, {
-    refetchQueries: [{ query: AccountsQuery, variables: { includeInactive: true } }],
+    refetchQueries: ['Accounts'],
   })
   const [updateAccount] = useMutation(UpdateAccountMutation, {
-    refetchQueries: [{ query: AccountsQuery, variables: { includeInactive: true } }],
+    refetchQueries: ['Accounts'],
   })
 
   const {
