@@ -29,21 +29,27 @@ export function TransactionsPage() {
   const [to, setTo] = useState(() => endOfMonth(todayIso()))
   const [categoryId, setCategoryId] = useState('')
 
-  // La ruta /movimientos/nuevo abre el formulario directamente (la usa el FAB).
-  const isCreatingFromRoute = location.pathname === '/movimientos/nuevo'
+  // Los botones/FAB globales navegan a estas rutas para abrir el formulario:
+  // `/movimientos/nuevo` (gasto) y `/movimientos/nuevo-ingreso` (ingreso).
+  const createFromRoute: Transaction['kind'] | null =
+    location.pathname === '/movimientos/nuevo'
+      ? 'EXPENSE'
+      : location.pathname === '/movimientos/nuevo-ingreso'
+        ? 'INCOME'
+        : null
   const [editing, setEditing] = useState<Transaction | null>(null)
   const [creatingKind, setCreatingKind] = useState<Transaction['kind'] | null>(
-    isCreatingFromRoute ? 'EXPENSE' : null,
+    createFromRoute,
   )
   const [removeError, setRemoveError] = useState<string | null>(null)
 
-  // /movimientos y /movimientos/nuevo renderizan el MISMO componente, así que al
-  // navegar de una a otra React no lo remonta y el initializer de useState de
-  // arriba no vuelve a correr. Sincronizar la apertura con la ruta por efecto es
-  // lo que hace que el FAB "Registrar gasto" abra el modal estando ya en la lista.
+  // /movimientos y sus rutas hijas renderizan el MISMO componente, así que al
+  // navegar entre ellas React no lo remonta y el initializer de useState no
+  // vuelve a correr. Sincronizar la apertura con la ruta por efecto es lo que
+  // hace que los botones globales abran el modal estando ya en la lista.
   useEffect(() => {
-    if (isCreatingFromRoute) setCreatingKind('EXPENSE')
-  }, [isCreatingFromRoute])
+    if (createFromRoute) setCreatingKind(createFromRoute)
+  }, [createFromRoute])
 
   const { tree } = useCategories()
   const { transactions, loading, error } = useTransactions(scope, {
@@ -60,7 +66,7 @@ export function TransactionsPage() {
   const closeForm = () => {
     setEditing(null)
     setCreatingKind(null)
-    if (isCreatingFromRoute) void navigate('/movimientos', { replace: true })
+    if (createFromRoute) void navigate('/movimientos', { replace: true })
   }
 
   const handleRemove = async (transaction: Transaction) => {
@@ -85,14 +91,7 @@ export function TransactionsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-ink text-2xl font-semibold">Movimientos</h1>
-        <div className="hidden gap-2 sm:flex">
-          <Button variant="secondary" onClick={() => setCreatingKind('INCOME')}>
-            Ingreso
-          </Button>
-        </div>
-      </div>
+      <h1 className="text-ink text-2xl font-semibold">Movimientos</h1>
 
       <Filters
         scope={scope}

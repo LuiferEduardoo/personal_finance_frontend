@@ -107,9 +107,18 @@ export const router = createBrowserRouter([
               </Lazy>
             ),
           },
-          // Misma pantalla: la ruta solo abre el formulario al entrar (la usa el FAB).
+          // Misma pantalla: la ruta solo abre el formulario al entrar (la usan los
+          // botones/FAB globales). `nuevo` abre gasto; `nuevo-ingreso`, ingreso.
           {
             path: '/movimientos/nuevo',
+            element: (
+              <Lazy>
+                <TransactionsPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/movimientos/nuevo-ingreso',
             element: (
               <Lazy>
                 <TransactionsPage />

@@ -17,6 +17,24 @@ function PlusIcon({ className }: { className: string }) {
   )
 }
 
+/** Flecha hacia arriba: "entra dinero", misma iconografía direccional que <Money>. */
+function IncomeIcon({ className }: { className: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M12 20V5M6 11l6-6 6 6" />
+    </svg>
+  )
+}
+
 /**
  * Un solo layout para las dos formas:
  *   - móvil: tab bar inferior fija + FAB flotante, al alcance del pulgar;
@@ -37,13 +55,14 @@ export function AppLayout() {
          * que flota por encima de ella (3.5rem más un margen). Con solo el alto
          * de la tab bar, la última fila de una lista queda bajo el botón.
          */}
-        <main className="flex-1 pb-[calc(9rem+var(--spacing-safe-bottom))] lg:pb-8">
+        {/* Despeja la tab bar y los DOS FAB apilados (gasto + ingreso). */}
+        <main className="flex-1 pb-[calc(12rem+var(--spacing-safe-bottom))] lg:pb-8">
           <Outlet />
         </main>
       </div>
 
       <TabBar />
-      <AddExpenseFab />
+      <QuickActionFabs />
     </div>
   )
 }
@@ -56,15 +75,22 @@ function SidebarNav() {
     >
       <p className="text-ink px-5 py-6 text-base font-semibold">Finanzas</p>
 
-      {/* La acción principal, dentro del flujo de la sidebar: no puede tapar el
-          contenido de la página como hacía el FAB reposicionado. */}
-      <div className="px-3 pb-4">
+      {/* Las acciones principales, dentro del flujo de la sidebar: no pueden
+          tapar el contenido como hacía el FAB reposicionado. */}
+      <div className="flex flex-col gap-2 px-3 pb-4">
         <NavLink
           to="/movimientos/nuevo"
           className="bg-ink text-surface flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium hover:opacity-90"
         >
           <PlusIcon className="size-4" />
           Registrar gasto
+        </NavLink>
+        <NavLink
+          to="/movimientos/nuevo-ingreso"
+          className="border-border text-ink hover:bg-surface-sunken flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-medium"
+        >
+          <IncomeIcon className="text-income size-4" />
+          Registrar ingreso
         </NavLink>
       </div>
 
@@ -123,20 +149,30 @@ function TabBar() {
 }
 
 /**
- * Registrar un gasto es la acción más frecuente, así que tiene botón propio.
- *
- * Solo móvil (`lg:hidden`): flota sobre la tab bar, al alcance del pulgar. En
- * desktop esta acción vive dentro de la sidebar, en el flujo, para no tapar el
- * contenido de la página.
+ * Registrar gasto e ingreso son las acciones frecuentes, disponibles en toda la
+ * app. Dos FAB apilados sobre la tab bar (solo móvil, `lg:hidden`; en desktop
+ * viven en la sidebar). El gasto es la acción primaria (más frecuente): FAB
+ * mayor y sólido; el ingreso, secundario, encima, con la flecha "entra dinero".
+ * Cada uno lleva `aria-label` y el icono direccional, así que no dependen del
+ * color para distinguirse.
  */
-function AddExpenseFab() {
+function QuickActionFabs() {
   return (
-    <NavLink
-      to="/movimientos/nuevo"
-      aria-label="Registrar gasto"
-      className="bg-ink text-surface fixed right-4 bottom-[calc(4.5rem+var(--spacing-safe-bottom))] z-20 flex size-14 items-center justify-center rounded-full shadow-lg lg:hidden"
-    >
-      <PlusIcon className="size-6" />
-    </NavLink>
+    <div className="lg:hidden">
+      <NavLink
+        to="/movimientos/nuevo-ingreso"
+        aria-label="Registrar ingreso"
+        className="border-border bg-surface-raised text-income fixed right-4 bottom-[calc(8.75rem+var(--spacing-safe-bottom))] z-20 flex size-12 items-center justify-center rounded-full border shadow-lg"
+      >
+        <IncomeIcon className="size-6" />
+      </NavLink>
+      <NavLink
+        to="/movimientos/nuevo"
+        aria-label="Registrar gasto"
+        className="bg-ink text-surface fixed right-4 bottom-[calc(4.5rem+var(--spacing-safe-bottom))] z-20 flex size-14 items-center justify-center rounded-full shadow-lg"
+      >
+        <PlusIcon className="size-6" />
+      </NavLink>
+    </div>
   )
 }
