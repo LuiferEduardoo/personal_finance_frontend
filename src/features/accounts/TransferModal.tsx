@@ -4,6 +4,7 @@ import { Button } from '@/components/Button'
 import { Field } from '@/components/Field'
 import { Select } from '@/components/Select'
 import { Sheet } from '@/components/Sheet'
+import { evictAccountTransfers } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import { todayIso } from '@/lib/dates'
 import { formatAmount } from '@/lib/money'
@@ -61,9 +62,9 @@ function TransferForm({
 
   const [transfer, { loading }] = useMutation(TransferMutation, {
     // La respuesta trae ambas cuentas con su balance nuevo → Apollo las
-    // normaliza por id en caché. Refrescamos las transferencias por si hay una
-    // lista abierta.
-    refetchQueries: ['AccountTransfers'],
+    // normaliza por id (los saldos se actualizan solos en cualquier lista).
+    // Evictamos las transferencias para que el detalle de ambas cuentas las vea.
+    update: evictAccountTransfers,
   })
 
   const from = accounts.find((account) => account.id === fromId)

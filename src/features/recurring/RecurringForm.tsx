@@ -16,6 +16,7 @@ import {
   rowsFromItems,
   type ItemRow,
 } from '@/features/transactions/items'
+import { evictRecurring } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import type { RecurringExpensesQuery } from '@/graphql/generated/graphql'
 import { todayIso } from '@/lib/dates'
@@ -78,10 +79,10 @@ export function RecurringForm({
   const { tree } = useCategories('EXPENSE')
 
   const [createRecurring] = useMutation(CreateRecurringExpenseMutation, {
-    refetchQueries: ['RecurringExpenses'],
+    update: evictRecurring,
   })
   const [updateRecurring] = useMutation(UpdateRecurringExpenseMutation, {
-    refetchQueries: ['RecurringExpenses'],
+    update: evictRecurring,
   })
 
   const {

@@ -5,6 +5,7 @@ import { Button } from '@/components/Button'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { useCategories } from '@/features/categories/useCategories'
+import { evictMovements } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import { endOfMonth, startOfMonth, todayIso } from '@/lib/dates'
 import { TransactionForm } from './TransactionForm'
@@ -51,11 +52,10 @@ export function TransactionsPage() {
     categoryId: categoryId || undefined,
   })
 
-  // Por NOMBRE de operación: refresca la lista con el filtro activo, no una
-  // entrada de caché `filter: {}` que nadie observa (ver TransactionForm).
-  const refetchQueries = ['Expenses', 'Incomes', 'Accounts']
-  const [removeExpense] = useMutation(RemoveExpenseMutation, { refetchQueries })
-  const [removeIncome] = useMutation(RemoveIncomeMutation, { refetchQueries })
+  // Eviction (ver src/graphql/cache.ts): el borrado desaparece de todas las
+  // páginas, no solo de la lista activa.
+  const [removeExpense] = useMutation(RemoveExpenseMutation, { update: evictMovements })
+  const [removeIncome] = useMutation(RemoveIncomeMutation, { update: evictMovements })
 
   const closeForm = () => {
     setEditing(null)

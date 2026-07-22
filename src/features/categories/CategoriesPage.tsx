@@ -9,23 +9,19 @@ import { Select } from '@/components/Select'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { useCurrentUserId } from '@/features/auth/SessionContext'
+import { evictCategories } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import type { TransactionKind } from '@/graphql/generated/graphql'
-import {
-  CategoriesQuery,
-  CreateCategoryMutation,
-  RemoveCategoryMutation,
-} from './categories.queries'
+import { CreateCategoryMutation, RemoveCategoryMutation } from './categories.queries'
 import { isSystemCategory, useCategories } from './useCategories'
 
 export function CategoriesPage() {
-  const userId = useCurrentUserId()
   const [isCreating, setIsCreating] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const { tree, loading, error } = useCategories()
 
   const [removeCategory] = useMutation(RemoveCategoryMutation, {
-    refetchQueries: [{ query: CategoriesQuery, variables: { userId } }],
+    update: evictCategories,
   })
 
   const handleRemove = async (id: string, name: string) => {
@@ -121,7 +117,7 @@ function CategoryForm({ onDone }: { onDone: () => void }) {
   const userId = useCurrentUserId()
   const [formError, setFormError] = useState<string | null>(null)
   const [createCategory] = useMutation(CreateCategoryMutation, {
-    refetchQueries: [{ query: CategoriesQuery, variables: { userId } }],
+    update: evictCategories,
   })
 
   const {

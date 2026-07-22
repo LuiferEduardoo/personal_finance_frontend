@@ -4,6 +4,7 @@ import { Button } from '@/components/Button'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { Money } from '@/components/Money'
+import { evictMovements, evictRecurring } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import { formatDate } from '@/lib/dates'
 import { RECURRENCE_LABELS } from './recurrence'
@@ -29,12 +30,15 @@ export function RecurringPage() {
   const recurring = data?.recurringExpenses ?? []
 
   const [removeRecurring] = useMutation(RemoveRecurringExpenseMutation, {
-    refetchQueries: ['RecurringExpenses'],
+    update: evictRecurring,
   })
   const [runDue, { loading: running }] = useMutation(RunDueRecurringExpensesMutation, {
-    // Genera gastos reales: refrescar también la lista de movimientos.
-    // Generar vencidos crea gastos que mueven saldos → refrescar cuentas.
-    refetchQueries: ['RecurringExpenses', 'Expenses', 'Accounts'],
+    // Genera gastos reales que mueven saldos → invalidar movimientos, cuentas e
+    // inflación (evictMovements) además de la propia lista de recurrentes.
+    update: (cache) => {
+      evictMovements(cache)
+      evictRecurring(cache)
+    },
   })
 
   const handleRemove = async (item: RecurringExpense) => {

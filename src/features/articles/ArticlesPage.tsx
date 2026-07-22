@@ -16,6 +16,7 @@ import {
 } from '@/features/products/products.queries'
 import { PurchaseForm } from '@/features/products/PurchaseForm'
 import { formatPackage } from '@/features/products/units'
+import { evictInventory } from '@/graphql/cache'
 import { formatDate } from '@/lib/dates'
 import { formatAmount } from '@/lib/money'
 import { ArticleForm } from './ArticleForm'
@@ -52,7 +53,7 @@ export function ArticlesPage() {
   const articles = useMemo(() => data?.articles ?? [], [data?.articles])
 
   const [removeArticle] = useMutation(RemoveArticleMutation, {
-    refetchQueries: ['Articles'],
+    update: evictInventory,
   })
 
   const handleRemove = async (article: Article) => {
@@ -234,7 +235,7 @@ function ArticleRow({
   const stats = statsData?.productStats.find((s) => s.articleId === article.id)
 
   const [markDepleted] = useMutation(MarkProductDepletedMutation, {
-    refetchQueries: ['Articles', 'ProductStats'],
+    update: evictInventory,
   })
 
   const handleDepleted = async () => {

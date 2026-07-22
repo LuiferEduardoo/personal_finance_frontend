@@ -10,6 +10,7 @@ import { Select } from '@/components/Select'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { useSession } from '@/features/auth/SessionContext'
+import { evictAccounts } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import type { PaymentMethodType } from '@/graphql/generated/graphql'
 import { formatAmount } from '@/lib/money'
@@ -40,7 +41,7 @@ export function AccountsPage() {
   const [actionError, setActionError] = useState<string | null>(null)
 
   const [removeAccount] = useMutation(RemoveAccountMutation, {
-    refetchQueries: ['Accounts'],
+    update: evictAccounts,
   })
   const [recalculate] = useMutation(RecalculateAccountBalanceMutation)
 
@@ -279,16 +280,11 @@ function AccountForm({ account, onDone }: { account?: Account; onDone: () => voi
   const isEditing = account != null
   const [formError, setFormError] = useState<string | null>(null)
 
-  // Por NOMBRE de operación: la lista se observa con `includeInactive` variable
-  // (por defecto false), y la caché indexa por ese arg. Refrescar una entrada
-  // fija (`true`) actualizaría algo que nadie observa y la cuenta nueva no
-  // aparecería hasta recargar. El nombre refresca la instancia activa.
-  const [createAccount] = useMutation(CreateAccountMutation, {
-    refetchQueries: ['Accounts'],
-  })
-  const [updateAccount] = useMutation(UpdateAccountMutation, {
-    refetchQueries: ['Accounts'],
-  })
+  // Eviction del campo `accounts`: la lista se observa con `includeInactive`
+  // variable (la caché indexa por ese arg) y el selector de cuenta lo usa en
+  // otras páginas. Evictar borra todas las entradas y refresca todas las vistas.
+  const [createAccount] = useMutation(CreateAccountMutation, { update: evictAccounts })
+  const [updateAccount] = useMutation(UpdateAccountMutation, { update: evictAccounts })
 
   const {
     register,

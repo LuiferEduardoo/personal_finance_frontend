@@ -6,15 +6,11 @@ import { z } from 'zod'
 import { Button } from '@/components/Button'
 import { Field } from '@/components/Field'
 import { Select } from '@/components/Select'
+import { evictInventory } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import type { UnitOfMeasure } from '@/graphql/generated/graphql'
 import { todayIso } from '@/lib/dates'
-import {
-  ProductPurchasesQuery,
-  ProductStatsQuery,
-  ProductsQuery,
-  RegisterProductPurchaseMutation,
-} from './products.queries'
+import { RegisterProductPurchaseMutation } from './products.queries'
 import { UNIT_OPTIONS } from './units'
 
 /**
@@ -62,13 +58,10 @@ export function PurchaseForm({
   const [formError, setFormError] = useState<string | null>(null)
 
   const [registerPurchase] = useMutation(RegisterProductPurchaseMutation, {
-    // La compra cambia `inStock` y las estadísticas a la vez; sin refrescar,
-    // la ficha seguiría diciendo que no hay producto.
-    refetchQueries: [
-      { query: ProductsQuery, variables: {} },
-      { query: ProductStatsQuery },
-      { query: ProductPurchasesQuery, variables: {} },
-    ],
+    // La compra cambia `inStock`, las estadísticas y el historial a la vez.
+    // Eviction del inventario (incluye `articles`, que es la lista visible) para
+    // que la ficha refleje "hay" sin recargar.
+    update: evictInventory,
   })
 
   const {

@@ -1,4 +1,5 @@
 import { type ApolloCache, useMutation } from '@apollo/client'
+import { evictInventory, evictMovements } from '@/graphql/cache'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -48,23 +49,6 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-/**
- * Un gasto con un ítem de artículo tipo PRODUCT crea/reabre un producto por
- * debajo, sin pasar por las mutaciones de productos (verificado). Se evictan los
- * campos raíz de inventario para que se refetcheen al volver a esa pantalla.
- */
-function evictInventory(cache: ApolloCache<unknown>): void {
-  for (const fieldName of [
-    'products',
-    'productStats',
-    'productPurchases',
-    'consumptionCycles',
-  ]) {
-    cache.evict({ id: 'ROOT_QUERY', fieldName })
-  }
-  cache.gc()
-}
-
 type TransactionFormProps = {
   kind: Transaction['kind']
   /** Presente al editar; ausente al crear. */
@@ -86,14 +70,14 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
 
   const { tree, loading: loadingCategories } = useCategories(kind)
 
-  // Refresco por NOMBRE de operación: alcanza la lista con su filtro activo, no
-  // una entrada de caché `filter: {}` que nadie observa. Incluye `Accounts`
-  // porque cualquier movimiento cambia el `balance` de su cuenta.
-  const refetchQueries = ['Expenses', 'Incomes', 'Accounts']
-  const [createExpense] = useMutation(CreateExpenseMutation, { refetchQueries })
-  const [createIncome] = useMutation(CreateIncomeMutation, { refetchQueries })
-  const [updateExpense] = useMutation(UpdateExpenseMutation, { refetchQueries })
-  const [updateIncome] = useMutation(UpdateIncomeMutation, { refetchQueries })
+  // Invalidación por eviction (ver src/graphql/cache.ts): así el movimiento nuevo
+  // aparece también en páginas que no estaban montadas (dashboard, inflación), no
+  // solo en la lista activa. `evictMovements` cubre listas, dashboard, inflación
+  // y saldos de cuenta.
+  const [createExpense] = useMutation(CreateExpenseMutation)
+  const [createIncome] = useMutation(CreateIncomeMutation)
+  const [updateExpense] = useMutation(UpdateExpenseMutation)
+  const [updateIncome] = useMutation(UpdateIncomeMutation)
 
   const {
     register,
@@ -166,10 +150,14 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
           amount: values.amount ?? 0,
           source: optional(values.counterparty),
         }
+        const update = (cache: ApolloCache<unknown>) => evictMovements(cache)
         if (isEditing) {
-          await updateIncome({ variables: { input: { id: transaction.id, ...input } } })
+          await updateIncome({
+            variables: { input: { id: transaction.id, ...input } },
+            update,
+          })
         } else {
-          await createIncome({ variables: { input: { userId, ...input } } })
+          await createIncome({ variables: { input: { userId, ...input } }, update })
         }
         onDone()
         return
@@ -181,13 +169,14 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
         merchant: optional(values.counterparty),
         ...(hasItems ? { items: buildItemsInput(rows) } : { amount: values.amount }),
       }
-      // Si algún ítem es de tipo producto, el inventario cambió por debajo.
+      // Si algún ítem es de tipo producto, el inventario también cambió por debajo.
       const touchedProduct = rows.some(
         (row) => row.article.mode !== 'none' && row.article.type === 'PRODUCT',
       )
-      const update = touchedProduct
-        ? (cache: ApolloCache<unknown>) => evictInventory(cache)
-        : undefined
+      const update = (cache: ApolloCache<unknown>) => {
+        evictMovements(cache)
+        if (touchedProduct) evictInventory(cache)
+      }
 
       if (isEditing) {
         await updateExpense({

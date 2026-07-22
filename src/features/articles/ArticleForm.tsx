@@ -8,6 +8,7 @@ import { Field } from '@/components/Field'
 import { Select } from '@/components/Select'
 import { useCategories } from '@/features/categories/useCategories'
 import { UNIT_OPTIONS } from '@/features/products/units'
+import { evictInventory } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import type {
   ArticleType,
@@ -15,11 +16,7 @@ import type {
   UnitOfMeasure,
 } from '@/graphql/generated/graphql'
 import { ARTICLE_TYPE_OPTIONS } from './article'
-import {
-  ArticlesQuery as ArticlesDocument,
-  CreateArticleMutation,
-  UpdateArticleMutation,
-} from './articles.queries'
+import { CreateArticleMutation, UpdateArticleMutation } from './articles.queries'
 
 type Article = ArticlesQuery['articles'][number]
 
@@ -46,10 +43,10 @@ export function ArticleForm({ article, defaultType, onDone }: ArticleFormProps) 
   const isEditing = article != null
   const [formError, setFormError] = useState<string | null>(null)
 
-  // Se refresca toda instancia de `articles` (cualquier tipo/búsqueda) por nombre.
-  const refetchQueries = ['Articles']
-  const [createArticle] = useMutation(CreateArticleMutation, { refetchQueries })
-  const [updateArticle] = useMutation(UpdateArticleMutation, { refetchQueries })
+  // Eviction: refresca el catálogo en todas las vistas (pestañas de Artículos,
+  // el buscador del formulario de gasto), no solo la lista activa.
+  const [createArticle] = useMutation(CreateArticleMutation, { update: evictInventory })
+  const [updateArticle] = useMutation(UpdateArticleMutation, { update: evictInventory })
 
   const { tree } = useCategories('EXPENSE')
 
@@ -85,12 +82,9 @@ export function ArticleForm({ article, defaultType, onDone }: ArticleFormProps) 
       if (isEditing) {
         await updateArticle({ variables: { input: { id: article.id, ...base } } })
       } else {
-        await createArticle({
-          variables: { input: base },
-          // Nombre único por usuario: si choca, el backend responde con el error
-          // crudo de Postgres; se muestra tal cual (mejor que tragárselo).
-          refetchQueries: [ArticlesDocument].map((query) => ({ query, variables: {} })),
-        })
+        // Nombre único por usuario: si choca, el backend responde con el error
+        // crudo de Postgres; se muestra tal cual (mejor que tragárselo).
+        await createArticle({ variables: { input: base } })
       }
       onDone()
     } catch (error) {
