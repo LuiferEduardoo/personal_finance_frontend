@@ -6,7 +6,9 @@ import { z } from 'zod'
 import { Button } from '@/components/Button'
 import { Field } from '@/components/Field'
 import { Select } from '@/components/Select'
+import { isCreditAccount, spendableAmount } from '@/features/accounts/account'
 import { AccountSelect } from '@/features/accounts/AccountSelect'
+import { useAccounts } from '@/features/accounts/useAccounts'
 import { useCurrentUserId } from '@/features/auth/SessionContext'
 import { useCategories } from '@/features/categories/useCategories'
 import { getFirstErrorMessage } from '@/graphql/errors'
@@ -85,8 +87,9 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
   const { tree, loading: loadingCategories } = useCategories(kind)
 
   // Refresco por NOMBRE de operación: alcanza la lista con su filtro activo, no
-  // una entrada de caché `filter: {}` que nadie observa.
-  const refetchQueries = ['Expenses', 'Incomes']
+  // una entrada de caché `filter: {}` que nadie observa. Incluye `Accounts`
+  // porque cualquier movimiento cambia el `balance` de su cuenta.
+  const refetchQueries = ['Expenses', 'Incomes', 'Accounts']
   const [createExpense] = useMutation(CreateExpenseMutation, { refetchQueries })
   const [createIncome] = useMutation(CreateIncomeMutation, { refetchQueries })
   const [updateExpense] = useMutation(UpdateExpenseMutation, { refetchQueries })
@@ -115,6 +118,17 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
   const currency = transaction?.currency ?? 'COP'
   const computedAmount = itemsTotal(rows)
 
+  // Cupo: si el gasto va a una tarjeta de crédito, se valida el importe contra
+  // el cupo disponible antes de enviar (el backend también lo rechaza).
+  const { accounts } = useAccounts()
+  const selectedAccount =
+    accounts.find((account) => account.id === watch('accountId')) ?? null
+  const creditAvailable =
+    !isIncome && selectedAccount && isCreditAccount(selectedAccount.type)
+      ? spendableAmount(selectedAccount)
+      : null
+  const effectiveAmount = hasItems ? computedAmount : (watch('amount') ?? 0)
+
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null)
     const optional = (value: string | undefined) => value?.trim() || undefined
@@ -126,6 +140,13 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
     }
     if (!isIncome && hasItems && !rows.every(isRowComplete)) {
       setFormError('Cada ítem necesita un artículo y su precio unitario.')
+      return
+    }
+    // Cupo de tarjeta: bloquear antes de enviar (el backend también lo rechaza).
+    if (creditAvailable != null && effectiveAmount > creditAvailable) {
+      setFormError(
+        `Excede el cupo disponible (${formatAmount(creditAvailable, selectedAccount!.currency)}).`,
+      )
       return
     }
 
@@ -226,11 +247,22 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
         {...register('occurredOn')}
       />
 
-      <AccountSelect
-        value={watch('accountId') ?? ''}
-        onChange={(accountId) => setValue('accountId', accountId)}
-        label={isIncome ? 'Cuenta destino (opcional)' : 'Cuenta (opcional)'}
-      />
+      <div>
+        <AccountSelect
+          value={watch('accountId') ?? ''}
+          onChange={(accountId) => setValue('accountId', accountId)}
+          label={isIncome ? 'Cuenta destino (opcional)' : 'Cuenta (opcional)'}
+        />
+        {creditAvailable != null && (
+          <p
+            className={`mt-1 text-xs ${
+              effectiveAmount > creditAvailable ? 'text-expense' : 'text-ink-muted'
+            }`}
+          >
+            Cupo disponible: {formatAmount(creditAvailable, selectedAccount!.currency)}
+          </p>
+        )}
+      </div>
 
       <Select
         label="Categoría (opcional)"

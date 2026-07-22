@@ -1,7 +1,8 @@
 import { useMutation } from '@apollo/client'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { Link } from 'react-router'
 import { z } from 'zod'
 import { Button } from '@/components/Button'
 import { Field } from '@/components/Field'
@@ -15,26 +16,48 @@ import { formatAmount } from '@/lib/money'
 import {
   ACCOUNT_TYPE_LABELS,
   ACCOUNT_TYPE_OPTIONS,
+  creditDebt,
   isCreditAccount,
   type Account,
 } from './account'
 import {
   AccountsQuery,
   CreateAccountMutation,
+  RecalculateAccountBalanceMutation,
   RemoveAccountMutation,
   UpdateAccountMutation,
 } from './accounts.queries'
+import { CreditGauge } from './CreditGauge'
+import { TransferModal } from './TransferModal'
 import { useAccounts } from './useAccounts'
 
 export function AccountsPage() {
-  const { accounts, loading, error } = useAccounts(true)
+  const [showInactive, setShowInactive] = useState(false)
+  const { accounts, loading, error } = useAccounts(showInactive)
   const [editing, setEditing] = useState<Account | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [transferFrom, setTransferFrom] = useState<string | null>(null)
+  const [isTransferring, setIsTransferring] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const [removeAccount] = useMutation(RemoveAccountMutation, {
     refetchQueries: ['Accounts'],
   })
+  const [recalculate] = useMutation(RecalculateAccountBalanceMutation)
+
+  // Agregados: no se mezclan activos con deudas. Disponible = suma de balances
+  // de activo; Deudas = suma de deudas de las tarjetas.
+  const totals = useMemo(() => {
+    let available = 0
+    let debt = 0
+    for (const account of accounts) {
+      if (isCreditAccount(account.type)) debt += creditDebt(account)
+      else available += account.balance
+    }
+    return { available, debt }
+  }, [accounts])
+
+  const currency = accounts[0]?.currency ?? 'COP'
 
   const handleRemove = async (account: Account) => {
     if (!window.confirm(`¿Eliminar la cuenta "${account.name}"?`)) return
@@ -42,9 +65,23 @@ export function AccountsPage() {
     try {
       await removeAccount({ variables: { id: account.id } })
     } catch (caught) {
-      // p.ej. "la cuenta tiene planes de cuotas" llega como BAD_REQUEST.
+      // "tiene planes de cuotas o transferencias asociadas" llega como BAD_REQUEST.
       setActionError(getFirstErrorMessage(caught))
     }
+  }
+
+  const handleRecalculate = async (account: Account) => {
+    setActionError(null)
+    try {
+      await recalculate({ variables: { id: account.id } })
+    } catch (caught) {
+      setActionError(getFirstErrorMessage(caught))
+    }
+  }
+
+  const openTransfer = (fromId?: string) => {
+    setTransferFrom(fromId ?? null)
+    setIsTransferring(true)
   }
 
   const isFormOpen = isCreating || editing !== null
@@ -53,8 +90,42 @@ export function AccountsPage() {
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-ink text-2xl font-semibold">Cuentas</h1>
-        <Button onClick={() => setIsCreating(true)}>Nueva</Button>
+        <div className="flex gap-2">
+          {accounts.length > 1 && (
+            <Button variant="secondary" onClick={() => openTransfer()}>
+              Transferir
+            </Button>
+          )}
+          <Button onClick={() => setIsCreating(true)}>Nueva</Button>
+        </div>
       </div>
+
+      {accounts.length > 0 && (
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="border-border bg-surface-raised rounded-lg border p-3">
+            <p className="text-ink-secondary text-xs">Disponible</p>
+            <p className="tabular text-income mt-0.5 text-lg font-medium">
+              {formatAmount(totals.available, currency)}
+            </p>
+          </div>
+          <div className="border-border bg-surface-raised rounded-lg border p-3">
+            <p className="text-ink-secondary text-xs">Deudas de tarjeta</p>
+            <p className="tabular text-expense mt-0.5 text-lg font-medium">
+              {formatAmount(totals.debt, currency)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <label className="text-ink-secondary mt-4 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={showInactive}
+          onChange={(event) => setShowInactive(event.target.checked)}
+          className="size-4"
+        />
+        Mostrar inactivas
+      </label>
 
       {actionError && (
         <div className="mt-4">
@@ -62,7 +133,7 @@ export function AccountsPage() {
         </div>
       )}
 
-      <div className="mt-6">
+      <div className="mt-4">
         {loading ? (
           <LoadingRows rows={3} />
         ) : error ? (
@@ -76,29 +147,14 @@ export function AccountsPage() {
         ) : (
           <ul className="flex flex-col gap-2">
             {accounts.map((account) => (
-              <li
+              <AccountCard
                 key={account.id}
-                className="border-border bg-surface-raised flex items-center justify-between gap-3 rounded-lg border p-3"
-              >
-                <div className="min-w-0">
-                  <p className="text-ink text-sm font-medium">
-                    {account.name}
-                    {!account.isActive && (
-                      <span className="text-ink-muted font-normal"> · inactiva</span>
-                    )}
-                  </p>
-                  <p className="text-ink-muted mt-0.5 text-xs">
-                    {ACCOUNT_TYPE_LABELS[account.type]} ·{' '}
-                    {formatAmount(account.openingBalance, account.currency)}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-1">
-                  <RowAction onClick={() => setEditing(account)}>Editar</RowAction>
-                  <RowAction onClick={() => void handleRemove(account)}>
-                    Eliminar
-                  </RowAction>
-                </div>
-              </li>
+                account={account}
+                onEdit={() => setEditing(account)}
+                onTransfer={() => openTransfer(account.id)}
+                onRecalculate={() => void handleRecalculate(account)}
+                onRemove={() => void handleRemove(account)}
+              />
             ))}
           </ul>
         )}
@@ -123,7 +179,86 @@ export function AccountsPage() {
           />
         )}
       </Sheet>
+
+      <TransferModal
+        isOpen={isTransferring}
+        onClose={() => setIsTransferring(false)}
+        accounts={accounts}
+        defaultFromId={transferFrom ?? undefined}
+      />
     </div>
+  )
+}
+
+function AccountCard({
+  account,
+  onEdit,
+  onTransfer,
+  onRecalculate,
+  onRemove,
+}: {
+  account: Account
+  onEdit: () => void
+  onTransfer: () => void
+  onRecalculate: () => void
+  onRemove: () => void
+}) {
+  const isCredit = isCreditAccount(account.type)
+  const debt = creditDebt(account)
+
+  return (
+    <li className="border-border bg-surface-raised rounded-lg border p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-ink text-sm font-medium">
+            {account.name}
+            {!account.isActive && (
+              <span className="text-ink-muted font-normal"> · inactiva</span>
+            )}
+          </p>
+          <p className="text-ink-muted mt-0.5 text-xs">
+            {ACCOUNT_TYPE_LABELS[account.type]}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          {isCredit ? (
+            <>
+              <p className="text-ink-muted text-xs">Deuda</p>
+              <p
+                className={`tabular text-lg font-medium ${
+                  debt > 0 ? 'text-expense' : 'text-ink'
+                }`}
+              >
+                {formatAmount(debt, account.currency)}
+              </p>
+            </>
+          ) : (
+            <p
+              className={`tabular text-lg font-medium ${
+                account.balance < 0 ? 'text-expense' : 'text-ink'
+              }`}
+            >
+              {formatAmount(account.balance, account.currency)}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {isCredit && account.creditLimit != null && <CreditGauge account={account} />}
+
+      <div className="mt-2 flex flex-wrap gap-1">
+        <RowAction onClick={onEdit}>Editar</RowAction>
+        <RowAction onClick={onTransfer}>{isCredit ? 'Pagar' : 'Transferir'}</RowAction>
+        <Link
+          to={`/cuentas/${account.id}`}
+          className="text-ink-secondary hover:bg-surface-sunken flex min-h-11 items-center rounded-lg px-3 text-sm"
+        >
+          Movimientos
+        </Link>
+        <RowAction onClick={onRecalculate}>Recalcular</RowAction>
+        <RowAction onClick={onRemove}>Eliminar</RowAction>
+      </div>
+    </li>
   )
 }
 

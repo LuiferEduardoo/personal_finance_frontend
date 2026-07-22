@@ -46,6 +46,11 @@ const AccountsPage = lazy(() =>
     default: module.AccountsPage,
   })),
 )
+const AccountDetailPage = lazy(() =>
+  import('@/features/accounts/AccountDetailPage').then((module) => ({
+    default: module.AccountDetailPage,
+  })),
+)
 const RecurringPage = lazy(() =>
   import('@/features/recurring/RecurringPage').then((module) => ({
     default: module.RecurringPage,
@@ -142,6 +147,14 @@ export const router = createBrowserRouter([
             element: (
               <Lazy>
                 <AccountsPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/cuentas/:id',
+            element: (
+              <Lazy>
+                <AccountDetailPage />
               </Lazy>
             ),
           },

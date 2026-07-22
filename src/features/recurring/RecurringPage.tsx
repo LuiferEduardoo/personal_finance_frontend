@@ -33,7 +33,8 @@ export function RecurringPage() {
   })
   const [runDue, { loading: running }] = useMutation(RunDueRecurringExpensesMutation, {
     // Genera gastos reales: refrescar también la lista de movimientos.
-    refetchQueries: ['RecurringExpenses', 'Expenses'],
+    // Generar vencidos crea gastos que mueven saldos → refrescar cuentas.
+    refetchQueries: ['RecurringExpenses', 'Expenses', 'Accounts'],
   })
 
   const handleRemove = async (item: RecurringExpense) => {

@@ -14,10 +14,15 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
-    "\n  query Accounts($includeInactive: Boolean) {\n    accounts(includeInactive: $includeInactive) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n      creditLimit\n      statementDay\n      dueDay\n      monthlyRate\n      issuer\n      lastFour\n    }\n  }\n": typeof types.AccountsDocument,
-    "\n  mutation CreateAccount($input: CreateAccountInput!) {\n    createAccount(input: $input) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n    }\n  }\n": typeof types.CreateAccountDocument,
-    "\n  mutation UpdateAccount($input: UpdateAccountInput!) {\n    updateAccount(input: $input) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n      creditLimit\n      statementDay\n      dueDay\n      monthlyRate\n      issuer\n      lastFour\n    }\n  }\n": typeof types.UpdateAccountDocument,
+    "\n  fragment AccountFields on Account {\n    id\n    name\n    type\n    currency\n    openingBalance\n    balance\n    availableCredit\n    creditLimit\n    statementDay\n    dueDay\n    monthlyRate\n    issuer\n    lastFour\n    isActive\n  }\n": typeof types.AccountFieldsFragmentDoc,
+    "\n  query Accounts($includeInactive: Boolean) {\n    accounts(includeInactive: $includeInactive) {\n      ...AccountFields\n    }\n  }\n": typeof types.AccountsDocument,
+    "\n  query Account($id: ID!) {\n    account(id: $id) {\n      ...AccountFields\n    }\n  }\n": typeof types.AccountDocument,
+    "\n  query AccountTransfers($accountId: ID) {\n    accountTransfers(accountId: $accountId) {\n      id\n      amount\n      occurredOn\n      note\n      fromAccount {\n        id\n        name\n        type\n      }\n      toAccount {\n        id\n        name\n        type\n      }\n    }\n  }\n": typeof types.AccountTransfersDocument,
+    "\n  mutation CreateAccount($input: CreateAccountInput!) {\n    createAccount(input: $input) {\n      ...AccountFields\n    }\n  }\n": typeof types.CreateAccountDocument,
+    "\n  mutation UpdateAccount($input: UpdateAccountInput!) {\n    updateAccount(input: $input) {\n      ...AccountFields\n    }\n  }\n": typeof types.UpdateAccountDocument,
     "\n  mutation RemoveAccount($id: ID!) {\n    removeAccount(id: $id)\n  }\n": typeof types.RemoveAccountDocument,
+    "\n  mutation Transfer($input: TransferInput!) {\n    transferBetweenAccounts(input: $input) {\n      id\n      amount\n      occurredOn\n      note\n      fromAccount {\n        ...AccountFields\n      }\n      toAccount {\n        ...AccountFields\n      }\n    }\n  }\n": typeof types.TransferDocument,
+    "\n  mutation RecalculateAccountBalance($id: ID!) {\n    recalculateAccountBalance(id: $id) {\n      id\n      balance\n    }\n  }\n": typeof types.RecalculateAccountBalanceDocument,
     "\n  query Articles($search: String, $type: ArticleType, $includeInactive: Boolean) {\n    articles(search: $search, type: $type, includeInactive: $includeInactive) {\n      id\n      name\n      type\n      brand\n      unit\n      packageSize\n      barcode\n      isConsumable\n      inStock\n      isActive\n      notes\n      categoryId\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n": typeof types.ArticlesDocument,
     "\n  mutation CreateArticle($input: CreateArticleInput!) {\n    createArticle(input: $input) {\n      id\n      name\n      type\n      brand\n      unit\n      isActive\n    }\n  }\n": typeof types.CreateArticleDocument,
     "\n  mutation UpdateArticle($input: UpdateArticleInput!) {\n    updateArticle(input: $input) {\n      id\n      name\n      type\n      brand\n      unit\n      isActive\n      notes\n      categoryId\n    }\n  }\n": typeof types.UpdateArticleDocument,
@@ -59,10 +64,15 @@ type Documents = {
     "\n  query Health {\n    health\n  }\n": typeof types.HealthDocument,
 };
 const documents: Documents = {
-    "\n  query Accounts($includeInactive: Boolean) {\n    accounts(includeInactive: $includeInactive) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n      creditLimit\n      statementDay\n      dueDay\n      monthlyRate\n      issuer\n      lastFour\n    }\n  }\n": types.AccountsDocument,
-    "\n  mutation CreateAccount($input: CreateAccountInput!) {\n    createAccount(input: $input) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n    }\n  }\n": types.CreateAccountDocument,
-    "\n  mutation UpdateAccount($input: UpdateAccountInput!) {\n    updateAccount(input: $input) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n      creditLimit\n      statementDay\n      dueDay\n      monthlyRate\n      issuer\n      lastFour\n    }\n  }\n": types.UpdateAccountDocument,
+    "\n  fragment AccountFields on Account {\n    id\n    name\n    type\n    currency\n    openingBalance\n    balance\n    availableCredit\n    creditLimit\n    statementDay\n    dueDay\n    monthlyRate\n    issuer\n    lastFour\n    isActive\n  }\n": types.AccountFieldsFragmentDoc,
+    "\n  query Accounts($includeInactive: Boolean) {\n    accounts(includeInactive: $includeInactive) {\n      ...AccountFields\n    }\n  }\n": types.AccountsDocument,
+    "\n  query Account($id: ID!) {\n    account(id: $id) {\n      ...AccountFields\n    }\n  }\n": types.AccountDocument,
+    "\n  query AccountTransfers($accountId: ID) {\n    accountTransfers(accountId: $accountId) {\n      id\n      amount\n      occurredOn\n      note\n      fromAccount {\n        id\n        name\n        type\n      }\n      toAccount {\n        id\n        name\n        type\n      }\n    }\n  }\n": types.AccountTransfersDocument,
+    "\n  mutation CreateAccount($input: CreateAccountInput!) {\n    createAccount(input: $input) {\n      ...AccountFields\n    }\n  }\n": types.CreateAccountDocument,
+    "\n  mutation UpdateAccount($input: UpdateAccountInput!) {\n    updateAccount(input: $input) {\n      ...AccountFields\n    }\n  }\n": types.UpdateAccountDocument,
     "\n  mutation RemoveAccount($id: ID!) {\n    removeAccount(id: $id)\n  }\n": types.RemoveAccountDocument,
+    "\n  mutation Transfer($input: TransferInput!) {\n    transferBetweenAccounts(input: $input) {\n      id\n      amount\n      occurredOn\n      note\n      fromAccount {\n        ...AccountFields\n      }\n      toAccount {\n        ...AccountFields\n      }\n    }\n  }\n": types.TransferDocument,
+    "\n  mutation RecalculateAccountBalance($id: ID!) {\n    recalculateAccountBalance(id: $id) {\n      id\n      balance\n    }\n  }\n": types.RecalculateAccountBalanceDocument,
     "\n  query Articles($search: String, $type: ArticleType, $includeInactive: Boolean) {\n    articles(search: $search, type: $type, includeInactive: $includeInactive) {\n      id\n      name\n      type\n      brand\n      unit\n      packageSize\n      barcode\n      isConsumable\n      inStock\n      isActive\n      notes\n      categoryId\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n": types.ArticlesDocument,
     "\n  mutation CreateArticle($input: CreateArticleInput!) {\n    createArticle(input: $input) {\n      id\n      name\n      type\n      brand\n      unit\n      isActive\n    }\n  }\n": types.CreateArticleDocument,
     "\n  mutation UpdateArticle($input: UpdateArticleInput!) {\n    updateArticle(input: $input) {\n      id\n      name\n      type\n      brand\n      unit\n      isActive\n      notes\n      categoryId\n    }\n  }\n": types.UpdateArticleDocument,
@@ -121,19 +131,39 @@ export function graphql(source: string): unknown;
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query Accounts($includeInactive: Boolean) {\n    accounts(includeInactive: $includeInactive) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n      creditLimit\n      statementDay\n      dueDay\n      monthlyRate\n      issuer\n      lastFour\n    }\n  }\n"): (typeof documents)["\n  query Accounts($includeInactive: Boolean) {\n    accounts(includeInactive: $includeInactive) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n      creditLimit\n      statementDay\n      dueDay\n      monthlyRate\n      issuer\n      lastFour\n    }\n  }\n"];
+export function graphql(source: "\n  fragment AccountFields on Account {\n    id\n    name\n    type\n    currency\n    openingBalance\n    balance\n    availableCredit\n    creditLimit\n    statementDay\n    dueDay\n    monthlyRate\n    issuer\n    lastFour\n    isActive\n  }\n"): (typeof documents)["\n  fragment AccountFields on Account {\n    id\n    name\n    type\n    currency\n    openingBalance\n    balance\n    availableCredit\n    creditLimit\n    statementDay\n    dueDay\n    monthlyRate\n    issuer\n    lastFour\n    isActive\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation CreateAccount($input: CreateAccountInput!) {\n    createAccount(input: $input) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n    }\n  }\n"): (typeof documents)["\n  mutation CreateAccount($input: CreateAccountInput!) {\n    createAccount(input: $input) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n    }\n  }\n"];
+export function graphql(source: "\n  query Accounts($includeInactive: Boolean) {\n    accounts(includeInactive: $includeInactive) {\n      ...AccountFields\n    }\n  }\n"): (typeof documents)["\n  query Accounts($includeInactive: Boolean) {\n    accounts(includeInactive: $includeInactive) {\n      ...AccountFields\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation UpdateAccount($input: UpdateAccountInput!) {\n    updateAccount(input: $input) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n      creditLimit\n      statementDay\n      dueDay\n      monthlyRate\n      issuer\n      lastFour\n    }\n  }\n"): (typeof documents)["\n  mutation UpdateAccount($input: UpdateAccountInput!) {\n    updateAccount(input: $input) {\n      id\n      name\n      type\n      currency\n      openingBalance\n      isActive\n      creditLimit\n      statementDay\n      dueDay\n      monthlyRate\n      issuer\n      lastFour\n    }\n  }\n"];
+export function graphql(source: "\n  query Account($id: ID!) {\n    account(id: $id) {\n      ...AccountFields\n    }\n  }\n"): (typeof documents)["\n  query Account($id: ID!) {\n    account(id: $id) {\n      ...AccountFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query AccountTransfers($accountId: ID) {\n    accountTransfers(accountId: $accountId) {\n      id\n      amount\n      occurredOn\n      note\n      fromAccount {\n        id\n        name\n        type\n      }\n      toAccount {\n        id\n        name\n        type\n      }\n    }\n  }\n"): (typeof documents)["\n  query AccountTransfers($accountId: ID) {\n    accountTransfers(accountId: $accountId) {\n      id\n      amount\n      occurredOn\n      note\n      fromAccount {\n        id\n        name\n        type\n      }\n      toAccount {\n        id\n        name\n        type\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateAccount($input: CreateAccountInput!) {\n    createAccount(input: $input) {\n      ...AccountFields\n    }\n  }\n"): (typeof documents)["\n  mutation CreateAccount($input: CreateAccountInput!) {\n    createAccount(input: $input) {\n      ...AccountFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation UpdateAccount($input: UpdateAccountInput!) {\n    updateAccount(input: $input) {\n      ...AccountFields\n    }\n  }\n"): (typeof documents)["\n  mutation UpdateAccount($input: UpdateAccountInput!) {\n    updateAccount(input: $input) {\n      ...AccountFields\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation RemoveAccount($id: ID!) {\n    removeAccount(id: $id)\n  }\n"): (typeof documents)["\n  mutation RemoveAccount($id: ID!) {\n    removeAccount(id: $id)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation Transfer($input: TransferInput!) {\n    transferBetweenAccounts(input: $input) {\n      id\n      amount\n      occurredOn\n      note\n      fromAccount {\n        ...AccountFields\n      }\n      toAccount {\n        ...AccountFields\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation Transfer($input: TransferInput!) {\n    transferBetweenAccounts(input: $input) {\n      id\n      amount\n      occurredOn\n      note\n      fromAccount {\n        ...AccountFields\n      }\n      toAccount {\n        ...AccountFields\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RecalculateAccountBalance($id: ID!) {\n    recalculateAccountBalance(id: $id) {\n      id\n      balance\n    }\n  }\n"): (typeof documents)["\n  mutation RecalculateAccountBalance($id: ID!) {\n    recalculateAccountBalance(id: $id) {\n      id\n      balance\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

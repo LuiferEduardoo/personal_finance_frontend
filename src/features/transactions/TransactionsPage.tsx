@@ -53,7 +53,7 @@ export function TransactionsPage() {
 
   // Por NOMBRE de operación: refresca la lista con el filtro activo, no una
   // entrada de caché `filter: {}` que nadie observa (ver TransactionForm).
-  const refetchQueries = ['Expenses', 'Incomes']
+  const refetchQueries = ['Expenses', 'Incomes', 'Accounts']
   const [removeExpense] = useMutation(RemoveExpenseMutation, { refetchQueries })
   const [removeIncome] = useMutation(RemoveIncomeMutation, { refetchQueries })
 
