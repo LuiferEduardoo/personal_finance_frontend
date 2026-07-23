@@ -9,6 +9,7 @@ import { Field } from '@/components/Field'
 import { Select } from '@/components/Select'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { useSession } from '@/features/auth/SessionContext'
 import { evictAccounts } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
@@ -39,6 +40,7 @@ export function AccountsPage() {
   const [transferFrom, setTransferFrom] = useState<string | null>(null)
   const [isTransferring, setIsTransferring] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const { confirm, dialog } = useConfirm()
 
   const [removeAccount] = useMutation(RemoveAccountMutation, {
     update: evictAccounts,
@@ -60,7 +62,7 @@ export function AccountsPage() {
   const currency = accounts[0]?.currency ?? 'COP'
 
   const handleRemove = async (account: Account) => {
-    if (!window.confirm(`¿Eliminar la cuenta "${account.name}"?`)) return
+    if (!(await confirm({ title: `¿Eliminar la cuenta "${account.name}"?` }))) return
     setActionError(null)
     try {
       await removeAccount({ variables: { id: account.id } })
@@ -186,6 +188,8 @@ export function AccountsPage() {
         accounts={accounts}
         defaultFromId={transferFrom ?? undefined}
       />
+
+      {dialog}
     </div>
   )
 }

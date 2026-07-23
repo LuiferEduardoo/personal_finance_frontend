@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@apollo/client'
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/Button'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { useSession } from '@/features/auth/SessionContext'
@@ -44,6 +45,7 @@ export function ArticlesPage() {
   const [editing, setEditing] = useState<Article | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const { confirm, dialog } = useConfirm()
 
   const isProduct = type === 'PRODUCT'
 
@@ -57,7 +59,7 @@ export function ArticlesPage() {
   })
 
   const handleRemove = async (article: Article) => {
-    if (!window.confirm(`¿Eliminar "${article.name}"?`)) return
+    if (!(await confirm({ title: `¿Eliminar "${article.name}"?` }))) return
     setActionError(null)
     try {
       await removeArticle({ variables: { id: article.id } })
@@ -169,6 +171,8 @@ export function ArticlesPage() {
           />
         )}
       </Sheet>
+
+      {dialog}
     </div>
   )
 }
@@ -230,6 +234,7 @@ function ArticleRow({
 }) {
   const [isBuying, setIsBuying] = useState(false)
   const isProduct = article.type === 'PRODUCT'
+  const { confirm, dialog } = useConfirm()
 
   const { data: statsData } = useQuery(ProductStatsQuery, { skip: !isProduct })
   const stats = statsData?.productStats.find((s) => s.articleId === article.id)
@@ -239,7 +244,13 @@ function ArticleRow({
   })
 
   const handleDepleted = async () => {
-    if (!window.confirm(`¿Marcar "${article.name}" como agotado?`)) return
+    const ok = await confirm({
+      title: `¿Marcar "${article.name}" como agotado?`,
+      message: 'Entrará a la lista de compras ("Por reponer").',
+      confirmLabel: 'Marcar agotado',
+      danger: false,
+    })
+    if (!ok) return
     try {
       await markDepleted({ variables: { articleId: article.id, depletedOn: null } })
     } catch (caught) {
@@ -302,6 +313,8 @@ function ArticleRow({
           />
         )}
       </Sheet>
+
+      {dialog}
     </li>
   )
 }

@@ -9,6 +9,7 @@ import { Select } from '@/components/Select'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { useCurrentUserId } from '@/features/auth/SessionContext'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { evictCategories } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import type { TransactionKind } from '@/graphql/generated/graphql'
@@ -19,13 +20,14 @@ export function CategoriesPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const { tree, loading, error } = useCategories()
+  const { confirm, dialog } = useConfirm()
 
   const [removeCategory] = useMutation(RemoveCategoryMutation, {
     update: evictCategories,
   })
 
   const handleRemove = async (id: string, name: string) => {
-    if (!window.confirm(`¿Eliminar la categoría "${name}"?`)) return
+    if (!(await confirm({ title: `¿Eliminar la categoría "${name}"?` }))) return
     setActionError(null)
     try {
       await removeCategory({ variables: { id } })
@@ -100,6 +102,8 @@ export function CategoriesPage() {
       >
         {isCreating && <CategoryForm onDone={() => setIsCreating(false)} />}
       </Sheet>
+
+      {dialog}
     </div>
   )
 }

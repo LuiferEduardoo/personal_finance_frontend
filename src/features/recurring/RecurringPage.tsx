@@ -4,6 +4,7 @@ import { Button } from '@/components/Button'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { Money } from '@/components/Money'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { evictMovements, evictRecurring } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import { formatDate } from '@/lib/dates'
@@ -23,6 +24,7 @@ export function RecurringPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [runMessage, setRunMessage] = useState<string | null>(null)
+  const { confirm, dialog } = useConfirm()
 
   const { data, loading, error } = useQuery(RecurringExpensesQuery, {
     variables: { includeInactive: true },
@@ -42,7 +44,7 @@ export function RecurringPage() {
   })
 
   const handleRemove = async (item: RecurringExpense) => {
-    if (!window.confirm(`¿Eliminar "${item.description}"?`)) return
+    if (!(await confirm({ title: `¿Eliminar "${item.description}"?` }))) return
     setActionError(null)
     try {
       await removeRecurring({ variables: { id: item.id } })
@@ -164,6 +166,8 @@ export function RecurringPage() {
           />
         )}
       </Sheet>
+
+      {dialog}
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useMutation } from '@apollo/client'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { Button } from '@/components/Button'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { useCategories } from '@/features/categories/useCategories'
@@ -23,6 +24,7 @@ const SCOPES: { value: TransactionsScope; label: string }[] = [
 export function TransactionsPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { confirm, dialog } = useConfirm()
 
   const [scope, setScope] = useState<TransactionsScope>('ALL')
   const [from, setFrom] = useState(() => startOfMonth(todayIso()))
@@ -71,7 +73,9 @@ export function TransactionsPage() {
 
   const handleRemove = async (transaction: Transaction) => {
     // Borrar es irreversible: se confirma siempre.
-    const confirmed = window.confirm(`¿Eliminar "${transaction.description}"?`)
+    const confirmed = await confirm({
+      title: `¿Eliminar "${transaction.description}"?`,
+    })
     if (!confirmed) return
 
     setRemoveError(null)
@@ -157,6 +161,8 @@ export function TransactionsPage() {
           />
         )}
       </Sheet>
+
+      {dialog}
     </div>
   )
 }
