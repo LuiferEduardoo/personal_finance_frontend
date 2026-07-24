@@ -73,7 +73,10 @@ function SidebarNav() {
       aria-label="Principal"
       className="border-border bg-surface-raised hidden w-60 shrink-0 border-r lg:sticky lg:top-0 lg:block lg:h-dvh"
     >
-      <p className="text-ink px-5 py-6 text-base font-semibold">Finanzas</p>
+      <p className="text-ink flex items-center gap-2 px-5 py-6 text-base font-semibold">
+        <img src="/logo.webp" alt="" className="size-7 shrink-0" />
+        Kuantico
+      </p>
 
       {/* Las acciones principales, dentro del flujo de la sidebar: no pueden
           tapar el contenido como hacía el FAB reposicionado. */}

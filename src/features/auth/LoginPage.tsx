@@ -47,6 +47,10 @@ export function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-12">
+      <div className="mb-8 flex items-center gap-2">
+        <img src="/logo.webp" alt="" className="size-9 shrink-0" />
+        <span className="text-ink text-xl font-semibold">Kuantico</span>
+      </div>
       <h1 className="text-ink text-2xl font-semibold">Entrar</h1>
       <p className="text-ink-secondary mt-1 text-sm">
         Accede para ver tus gastos e ingresos.
