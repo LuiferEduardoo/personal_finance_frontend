@@ -28,7 +28,13 @@ export function SettingsPage() {
         <SettingsLink to="/recurrentes" label="Gastos recurrentes" />
       </div>
 
-      <Button variant="secondary" onClick={() => void logout()} className="mt-6">
+      {/* En escritorio el cerrar sesión vive en el panel lateral; aquí solo se
+          muestra en móvil, que no tiene sidebar. */}
+      <Button
+        variant="secondary"
+        onClick={() => void logout()}
+        className="mt-6 lg:hidden"
+      >
         Cerrar sesión
       </Button>
     </div>

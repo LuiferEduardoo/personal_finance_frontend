@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router'
+import { useSession } from '@/features/auth/SessionContext'
 import { NAV_ITEMS } from './navigation'
 
 function PlusIcon({ className }: { className: string }) {
@@ -13,6 +14,24 @@ function PlusIcon({ className }: { className: string }) {
       className={className}
     >
       <path d="M12 5v14M5 12h14" />
+    </svg>
+  )
+}
+
+function LogoutIcon({ className }: { className: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M15 17v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1" />
+      <path d="M10 12h11m0 0-3-3m3 3-3 3" />
     </svg>
   )
 }
@@ -68,10 +87,11 @@ export function AppLayout() {
 }
 
 function SidebarNav() {
+  const { logout } = useSession()
   return (
     <nav
       aria-label="Principal"
-      className="border-border bg-surface-raised hidden w-60 shrink-0 border-r lg:sticky lg:top-0 lg:block lg:h-dvh"
+      className="border-border bg-surface-raised hidden w-60 shrink-0 border-r lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col"
     >
       <p className="text-ink flex items-center gap-2 px-5 py-5 text-lg font-semibold">
         <img src="/logo.webp" alt="" className="size-10 shrink-0" />
@@ -97,7 +117,8 @@ function SidebarNav() {
         </NavLink>
       </div>
 
-      <ul className="flex flex-col gap-1 px-3">
+      {/* flex-1 empuja el cerrar sesión al fondo del panel. */}
+      <ul className="flex flex-1 flex-col gap-1 px-3">
         {NAV_ITEMS.map((item) => (
           <li key={item.to}>
             <NavLink
@@ -117,6 +138,17 @@ function SidebarNav() {
           </li>
         ))}
       </ul>
+
+      <div className="px-3 pt-2 pb-4">
+        <button
+          type="button"
+          onClick={() => void logout()}
+          className="text-ink-secondary hover:bg-surface-sunken flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium"
+        >
+          <LogoutIcon className="size-6" />
+          Cerrar sesión
+        </button>
+      </div>
     </nav>
   )
 }
