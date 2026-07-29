@@ -36,6 +36,11 @@ const ArticlesPage = lazy(() =>
     default: module.ArticlesPage,
   })),
 )
+const InvoiceScanPage = lazy(() =>
+  import('@/features/invoices/InvoiceScanPage').then((module) => ({
+    default: module.InvoiceScanPage,
+  })),
+)
 const InflationPage = lazy(() =>
   import('@/features/inflation/InflationPage').then((module) => ({
     default: module.InflationPage,
@@ -122,6 +127,14 @@ export const router = createBrowserRouter([
             element: (
               <Lazy>
                 <TransactionsPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/facturas',
+            element: (
+              <Lazy>
+                <InvoiceScanPage />
               </Lazy>
             ),
           },

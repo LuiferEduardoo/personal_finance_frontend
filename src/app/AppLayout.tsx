@@ -36,6 +36,24 @@ function LogoutIcon({ className }: { className: string }) {
   )
 }
 
+function ScanIcon({ className }: { className: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
+      <path d="M7 12h10" />
+    </svg>
+  )
+}
+
 /** Flecha hacia arriba: "entra dinero", misma iconografía direccional que <Money>. */
 function IncomeIcon({ className }: { className: string }) {
   return (
@@ -114,6 +132,13 @@ function SidebarNav() {
         >
           <IncomeIcon className="text-income size-4" />
           Registrar ingreso
+        </NavLink>
+        <NavLink
+          to="/facturas"
+          className="border-border text-ink hover:bg-surface-sunken flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-medium"
+        >
+          <ScanIcon className="size-4" />
+          Escanear factura
         </NavLink>
       </div>
 

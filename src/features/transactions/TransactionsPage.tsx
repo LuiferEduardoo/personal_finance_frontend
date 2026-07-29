@@ -1,6 +1,6 @@
 import { useMutation } from '@apollo/client'
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { Button } from '@/components/Button'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { Sheet } from '@/components/Sheet'
@@ -95,7 +95,18 @@ export function TransactionsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
-      <h1 className="text-ink text-2xl font-semibold">Movimientos</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-ink text-2xl font-semibold">Movimientos</h1>
+        {/* En móvil no hay sidebar y los dos FAB ya ocupan el pulgar: esta es la
+            entrada al escáner de facturas desde donde se piensa en registrar. */}
+        <Link
+          to="/facturas"
+          className="border-border text-ink hover:bg-surface-sunken inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium"
+        >
+          <ScanIcon />
+          Escanear factura
+        </Link>
+      </div>
 
       <Filters
         scope={scope}
@@ -164,6 +175,24 @@ export function TransactionsPage() {
 
       {dialog}
     </div>
+  )
+}
+
+function ScanIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="size-5"
+    >
+      <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
+      <path d="M7 12h10" />
+    </svg>
   )
 }
 

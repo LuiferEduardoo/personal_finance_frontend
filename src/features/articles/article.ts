@@ -1,14 +1,28 @@
-import type { ArticleType, CreateArticleInput } from '@/graphql/generated/graphql'
+import type {
+  ArticleType,
+  CreateArticleInput,
+  UnitOfMeasure,
+} from '@/graphql/generated/graphql'
 
 /**
  * Selección de artículo de un gasto. Los tres estados son excluyentes por
  * construcción, así que el XOR `articleId` / `newArticle` que exige el backend
  * ("Envía solo uno...") no se puede violar desde la UI.
+ *
+ * `unit` y `brand` son opcionales porque el formulario manual no los pide: los
+ * trae el análisis de facturas, que sí los lee del ticket y no debe perderlos.
  */
 export type ArticleSelection =
   | { mode: 'none' }
   | { mode: 'existing'; articleId: string; label: string; type: ArticleType }
-  | { mode: 'new'; name: string; type: ArticleType; categoryId: string | null }
+  | {
+      mode: 'new'
+      name: string
+      type: ArticleType
+      categoryId: string | null
+      unit?: UnitOfMeasure | null
+      brand?: string | null
+    }
 
 /**
  * Traduce la selección a los campos de `CreateExpenseInput`. Nunca devuelve
@@ -25,6 +39,8 @@ export function buildArticleInput(selection: ArticleSelection): {
         name: selection.name,
         type: selection.type,
         categoryId: selection.categoryId ?? undefined,
+        unit: selection.unit ?? undefined,
+        brand: selection.brand?.trim() || undefined,
       },
     }
   }
