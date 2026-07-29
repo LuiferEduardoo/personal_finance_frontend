@@ -4,7 +4,7 @@ Guía para trabajar en este repositorio.
 
 ## Qué es esto
 
-Dashboard web para una aplicación de **gestión de gastos personales**. Es solo el frontend: consume el backend `personal-finance-backend`, que expone **una única API GraphQL**.
+Dashboard web para una aplicación de **gestión de gastos personales**. Es solo el frontend: consume el backend `personal-finance-backend`, que expone una **API GraphQL** y, aparte, **tres endpoints REST** para el análisis de facturas (`/invoices/*`, ver más abajo).
 
 Funcionalidad que debe cubrir el dashboard:
 
@@ -15,6 +15,7 @@ Funcionalidad que debe cubrir el dashboard:
 - **Categorías** propias y del sistema, con jerarquía padre/hijo.
 - **Inflación**: dos métricas separadas en pestañas — precios (`articleInflation`) y variación de gasto (`expenseInflation`).
 - **Inventario** de artículos tipo `PRODUCT` (`inStock`), historial de compras, ciclos de consumo y predicción.
+- **Escanear factura**: foto o texto pegado → borrador de gasto leído por el backend → revisión → alta ([InvoiceScanPage.tsx](src/features/invoices/InvoiceScanPage.tsx), ruta `/facturas`).
 
 ## Modelo de datos: cuentas, gastos multi-ítem, artículos e inventario
 
@@ -116,6 +117,24 @@ Categorías, gastos e ingresos **no** están migrados al token todavía: reciben
 > Mientras siga así, la sección "Por reponer" se deriva en cliente de `isConsumable && !inStock`, que da la misma información desde el punto de vista del usuario. Si el backend expone la lista real (con `autoAdded` y el vínculo a la compra), hay que sustituir esa derivación por la query.
 
 - `productStats.estimatedDepletionDate` es una **estimación** (promedio de duración sobre el ciclo abierto); presentarla como tal.
+
+### Facturas: la parte REST de la API
+
+Tres endpoints fuera de GraphQL, todos 🔒 con el mismo `Authorization: Bearer <accessToken>`. Cliente en [http.ts](src/api/http.ts) — adjunta el token, y ante un 401 renueva **una vez** con `refreshSession` (la misma promesa serializada que usa Apollo) y reintenta. La base sale de [api/env.ts](src/api/env.ts): `VITE_API_BASE_URL` o, por defecto, el endpoint de GraphQL sin `/graphql`.
+
+| Endpoint                       | Cuerpo                                        | Devuelve        |
+| ------------------------------ | --------------------------------------------- | --------------- |
+| `POST /invoices/analyze-image` | `multipart/form-data`, campo `image`          | `ExpenseDraft`  |
+| `POST /invoices/analyze-text`  | JSON `{ text }`                               | `ExpenseDraft`  |
+| `POST /invoices/expense`       | `CreateExpensePayload` (= input sin `userId`) | El gasto creado |
+
+- **Los enums van en minúscula** (`product`, `kg`, `once`), al revés que en GraphQL (`PRODUCT`, `KILOGRAM`, `ONCE`). Se traducen al entrar y al salir en [invoice.ts](src/features/invoices/invoice.ts) para poder reutilizar componentes y etiquetas.
+- Con `FormData` **no se pone `Content-Type`**: el navegador añade el boundary. Imagen JPEG/PNG/WEBP, máx. 10 MB (se valida antes de subir).
+- El borrador lo escribe un LLM: `occurredOn`, `amount` y `categorySuggestion` pueden ser `null` y los enums venir inventados → se normaliza al recibirlo. `categorySuggestion` es **texto libre, no un id**: se empareja contra las categorías del usuario (`matchCategory`, sin acentos ni mayúsculas) y, si no cuadra, se deja sin categoría.
+- `accountId` llega siempre `null` y en la pantalla de revisión es **obligatorio** (a diferencia del gasto manual).
+- Al confirmar valen las mismas reglas que en GraphQL: XOR `articleId`/`newArticle` por ítem, `amount` **omitido** si hay ítems, y `items: []` + `amount` si la factura no trae líneas. Nunca se envía `subtotal` ni `userId`.
+- El gasto se crea fuera de Apollo, así que la caché **no se entera sola**: hay que evictar a mano (`evictMovements`, y `evictInventory` si hubo artículos nuevos), igual que hace el formulario manual.
+- Códigos propios: `502` = el modelo falló o la foto es ilegible; `503` = al backend le falta `OPENAI_API_KEY` (error de configuración, no del usuario). El cuerpo de error es `{ statusCode, error, message }`, y solo el `message` de un 4xx se muestra tal cual.
 
 ### Errores
 
