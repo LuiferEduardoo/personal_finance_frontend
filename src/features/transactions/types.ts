@@ -17,6 +17,7 @@ export type TransactionItem = {
   description: string | null
   unitPrice: number | null
   quantity: number
+  discount: number
   subtotal: number
 }
 
@@ -77,6 +78,7 @@ export function expenseToTransaction(expense: Expense): Transaction {
       description: item.description ?? null,
       unitPrice: item.unitPrice ?? null,
       quantity: item.quantity,
+      discount: item.discount,
       subtotal: item.subtotal,
     })),
   }

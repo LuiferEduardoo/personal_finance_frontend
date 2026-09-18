@@ -1,6 +1,5 @@
 import { useQuery } from '@apollo/client'
 import { useMemo } from 'react'
-import { useCurrentUserId } from '@/features/auth/SessionContext'
 import type { CategoriesQuery as CategoriesQueryType } from '@/graphql/generated/graphql'
 import type { TransactionKind } from '@/graphql/generated/graphql'
 import { CategoriesQuery } from './categories.queries'
@@ -14,12 +13,11 @@ export function isSystemCategory(category: Pick<Category, 'userId'>): boolean {
 
 /**
  * Categorías del usuario más las del sistema.
- * El `userId` lo inyecta el hook: ningún componente debe pasarlo a mano.
+ * El backend obtiene el propietario directamente del token de acceso.
  */
 export function useCategories(kind?: TransactionKind) {
-  const userId = useCurrentUserId()
   const { data, loading, error } = useQuery(CategoriesQuery, {
-    variables: { userId, kind },
+    variables: { kind },
   })
 
   const categories = useMemo(() => data?.categories ?? [], [data?.categories])

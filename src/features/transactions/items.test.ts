@@ -7,6 +7,7 @@ function row(overrides: Partial<ItemRow>): ItemRow {
     article: { mode: 'none' },
     unitPrice: undefined,
     quantity: 1,
+    discount: 0,
     ...overrides,
   }
 }
@@ -22,6 +23,13 @@ describe('itemsTotal', () => {
 
   it('ignora las filas sin precio', () => {
     expect(itemsTotal([row({ unitPrice: undefined, quantity: 5 })])).toBe(0)
+  })
+
+  it('resta los descuentos sin producir subtotales negativos', () => {
+    expect(itemsTotal([row({ unitPrice: 2500, quantity: 2, discount: 750 })])).toBe(
+      4250,
+    )
+    expect(itemsTotal([row({ unitPrice: 1000, quantity: 1, discount: 1200 })])).toBe(0)
   })
 })
 
@@ -54,6 +62,16 @@ describe('isRowComplete', () => {
         }),
       ),
     ).toBe(true)
+    expect(
+      isRowComplete(
+        row({
+          article: { mode: 'existing', articleId: 'a', label: 'x', type: 'PRODUCT' },
+          unitPrice: 10,
+          quantity: 1,
+          discount: 11,
+        }),
+      ),
+    ).toBe(false)
   })
 })
 
@@ -77,11 +95,17 @@ describe('buildItemsInput', () => {
       }),
     ])
 
-    expect(input[0]).toEqual({ articleId: 'a1', unitPrice: 25000, quantity: 1 })
+    expect(input[0]).toEqual({
+      articleId: 'a1',
+      unitPrice: 25000,
+      quantity: 1,
+      discount: 0,
+    })
     expect(input[1]).toEqual({
       newArticle: { name: 'Jabón', type: 'PRODUCT', categoryId: undefined },
       unitPrice: 3000,
       quantity: 2,
+      discount: 0,
     })
   })
 })

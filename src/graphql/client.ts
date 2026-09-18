@@ -87,9 +87,9 @@ export const apolloClient = new ApolloClient({
         fields: {
           // Estas listas se filtran por argumentos; cachearlas por sus
           // variables evita que un filtro pise el resultado de otro.
-          expenses: { keyArgs: ['userId', 'filter'] },
-          incomes: { keyArgs: ['userId', 'filter'] },
-          categories: { keyArgs: ['userId', 'kind'] },
+          expenses: { keyArgs: ['filter'] },
+          incomes: { keyArgs: ['filter'] },
+          categories: { keyArgs: ['kind'] },
           products: { keyArgs: ['search', 'includeInactive'] },
           productPurchases: { keyArgs: ['articleId'] },
           consumptionCycles: { keyArgs: ['articleId'] },

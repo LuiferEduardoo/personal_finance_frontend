@@ -37,6 +37,7 @@ export const ExpenseFields = graphql(`
       description
       unitPrice
       quantity
+      discount
       subtotal
       article {
         id
@@ -73,16 +74,16 @@ export const IncomeFields = graphql(`
 `)
 
 export const ExpensesQuery = graphql(`
-  query Expenses($userId: ID!, $filter: TransactionsFilterInput) {
-    expenses(userId: $userId, filter: $filter) {
+  query Expenses($filter: TransactionsFilterInput) {
+    expenses(filter: $filter) {
       ...ExpenseFields
     }
   }
 `)
 
 export const IncomesQuery = graphql(`
-  query Incomes($userId: ID!, $filter: TransactionsFilterInput) {
-    incomes(userId: $userId, filter: $filter) {
+  query Incomes($filter: TransactionsFilterInput) {
+    incomes(filter: $filter) {
       ...IncomeFields
     }
   }

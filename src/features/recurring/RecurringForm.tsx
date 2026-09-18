@@ -71,6 +71,7 @@ export function RecurringForm({
         description: item.description ?? null,
         unitPrice: item.unitPrice ?? null,
         quantity: item.quantity,
+        discount: item.discount,
         subtotal: 0,
       })),
     ),

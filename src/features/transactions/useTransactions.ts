@@ -1,6 +1,5 @@
 import { useQuery } from '@apollo/client'
 import { useMemo } from 'react'
-import { useCurrentUserId } from '@/features/auth/SessionContext'
 import { ExpensesQuery, IncomesQuery } from './transactions.queries'
 import { expenseToTransaction, incomeToTransaction, type Transaction } from './types'
 
@@ -23,8 +22,7 @@ export function useTransactions(
   scope: TransactionsScope,
   filter: TransactionsFilter = {},
 ) {
-  const userId = useCurrentUserId()
-  const variables = { userId, filter }
+  const variables = { filter }
 
   const expenses = useQuery(ExpensesQuery, {
     variables,

@@ -60,7 +60,7 @@ export function ExpenseItemsEditor({
               />
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Field
                 label="Precio unitario"
                 type="number"
@@ -87,6 +87,22 @@ export function ExpenseItemsEditor({
                 value={row.quantity}
                 onChange={(event) =>
                   patch(row.key, { quantity: Number(event.target.value) })
+                }
+              />
+              <Field
+                label="Descuento"
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min="0"
+                max={(row.unitPrice ?? 0) * row.quantity}
+                placeholder="0"
+                value={row.discount}
+                onChange={(event) =>
+                  patch(row.key, {
+                    discount:
+                      event.target.value === '' ? 0 : Number(event.target.value),
+                  })
                 }
               />
             </div>

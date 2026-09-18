@@ -9,6 +9,7 @@ export type ItemRow = {
   article: ArticleSelection
   unitPrice: number | undefined
   quantity: number
+  discount: number
 }
 
 let counter = 0
@@ -19,6 +20,7 @@ export function newItemRow(): ItemRow {
     article: { mode: 'none' },
     unitPrice: undefined,
     quantity: 1,
+    discount: 0,
   }
 }
 
@@ -40,6 +42,7 @@ export function rowsFromItems(items: TransactionItem[]): ItemRow[] {
       article,
       unitPrice: item.unitPrice ?? undefined,
       quantity: item.quantity,
+      discount: item.discount,
     }
   })
 }
@@ -48,7 +51,7 @@ export function rowsFromItems(items: TransactionItem[]): ItemRow[] {
 export function rowSubtotal(row: ItemRow): number | null {
   if (row.unitPrice == null || !Number.isFinite(row.unitPrice)) return null
   if (!Number.isFinite(row.quantity)) return null
-  return row.unitPrice * row.quantity
+  return Math.max(0, row.unitPrice * row.quantity - row.discount)
 }
 
 export function itemsTotal(rows: ItemRow[]): number {
@@ -57,7 +60,13 @@ export function itemsTotal(rows: ItemRow[]): number {
 
 /** Una fila está lista si tiene artículo y precio. */
 export function isRowComplete(row: ItemRow): boolean {
-  return row.article.mode !== 'none' && row.unitPrice != null && row.quantity > 0
+  return (
+    row.article.mode !== 'none' &&
+    row.unitPrice != null &&
+    row.quantity > 0 &&
+    row.discount >= 0 &&
+    row.discount <= row.unitPrice * row.quantity
+  )
 }
 
 /**
@@ -71,5 +80,6 @@ export function buildItemsInput(rows: ItemRow[]): ExpenseItemInput[] {
     ...buildArticleInput(row.article),
     unitPrice: row.unitPrice ?? 0,
     quantity: row.quantity,
+    discount: row.discount,
   }))
 }

@@ -36,6 +36,7 @@ export const RecurringFields = graphql(`
       description
       unitPrice
       quantity
+      discount
       article {
         id
         name

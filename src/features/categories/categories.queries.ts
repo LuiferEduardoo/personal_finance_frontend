@@ -2,11 +2,11 @@ import { graphql } from '@/graphql/generated'
 
 /**
  * Devuelve las categorías del sistema (`userId: null`) más las del usuario.
- * `userId` va como argumento porque este módulo aún no está migrado al token.
+ * El usuario se obtiene del token de acceso; la consulta no acepta `userId`.
  */
 export const CategoriesQuery = graphql(`
-  query Categories($userId: ID!, $kind: TransactionKind) {
-    categories(userId: $userId, kind: $kind) {
+  query Categories($kind: TransactionKind) {
+    categories(kind: $kind) {
       id
       name
       icon

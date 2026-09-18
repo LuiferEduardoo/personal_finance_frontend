@@ -10,7 +10,6 @@ import { Select } from '@/components/Select'
 import { isCreditAccount, spendableAmount } from '@/features/accounts/account'
 import { AccountSelect } from '@/features/accounts/AccountSelect'
 import { useAccounts } from '@/features/accounts/useAccounts'
-import { useCurrentUserId } from '@/features/auth/SessionContext'
 import { useCategories } from '@/features/categories/useCategories'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import { todayIso } from '@/lib/dates'
@@ -57,7 +56,6 @@ type TransactionFormProps = {
 }
 
 export function TransactionForm({ kind, transaction, onDone }: TransactionFormProps) {
-  const userId = useCurrentUserId()
   const isIncome = kind === 'INCOME'
   const isEditing = transaction != null
   const [formError, setFormError] = useState<string | null>(null)
@@ -157,7 +155,7 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
             update,
           })
         } else {
-          await createIncome({ variables: { input: { userId, ...input } }, update })
+          await createIncome({ variables: { input }, update })
         }
         onDone()
         return
@@ -185,7 +183,7 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
         })
       } else {
         await createExpense({
-          variables: { input: { userId, ...expenseInput } },
+          variables: { input: expenseInput },
           update,
         })
       }

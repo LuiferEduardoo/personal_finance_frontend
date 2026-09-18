@@ -8,7 +8,6 @@ import { Field } from '@/components/Field'
 import { Select } from '@/components/Select'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
-import { useCurrentUserId } from '@/features/auth/SessionContext'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { evictCategories } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
@@ -118,7 +117,6 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 function CategoryForm({ onDone }: { onDone: () => void }) {
-  const userId = useCurrentUserId()
   const [formError, setFormError] = useState<string | null>(null)
   const [createCategory] = useMutation(CreateCategoryMutation, {
     update: evictCategories,
@@ -145,7 +143,6 @@ function CategoryForm({ onDone }: { onDone: () => void }) {
       await createCategory({
         variables: {
           input: {
-            userId,
             name: values.name,
             kind: values.kind,
             parentId: values.parentId?.trim() || undefined,
