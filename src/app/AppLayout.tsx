@@ -1,6 +1,7 @@
-import { NavLink, Outlet } from 'react-router'
-import { useSession } from '@/features/auth/SessionContext'
-import { NAV_ITEMS } from './navigation'
+import { useState } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router'
+import { NAV_ITEMS, ORGANIZATION_ITEMS, type NavItem } from './navigation'
+import { ProfileMenu } from './ProfileMenu'
 
 function PlusIcon({ className }: { className: string }) {
   return (
@@ -18,7 +19,7 @@ function PlusIcon({ className }: { className: string }) {
   )
 }
 
-function LogoutIcon({ className }: { className: string }) {
+function PanelIcon({ className }: { className: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -30,8 +31,8 @@ function LogoutIcon({ className }: { className: string }) {
       aria-hidden="true"
       className={className}
     >
-      <path d="M15 17v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1" />
-      <path d="M10 12h11m0 0-3-3m3 3-3 3" />
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16" />
     </svg>
   )
 }
@@ -87,6 +88,15 @@ export function AppLayout() {
       <SidebarNav />
 
       <div className="flex min-w-0 flex-1 flex-col">
+        <header className="border-border bg-surface/95 sticky top-0 z-30 flex min-h-16 items-center justify-between border-b px-4 backdrop-blur sm:px-6">
+          <p className="text-ink flex items-center gap-2 text-sm font-semibold lg:hidden">
+            <img src="/logo.webp" alt="" className="size-8" />
+            Kuantico
+          </p>
+          <div className="ml-auto">
+            <ProfileMenu />
+          </div>
+        </header>
         {/*
          * El padding inferior tiene que despejar la tab bar (4.5rem) Y el FAB,
          * que flota por encima de ella (3.5rem más un margen). Con solo el alto
@@ -105,76 +115,193 @@ export function AppLayout() {
 }
 
 function SidebarNav() {
-  const { logout } = useSession()
+  const location = useLocation()
+  const organizationActive = ORGANIZATION_ITEMS.some((item) =>
+    location.pathname.startsWith(item.to),
+  )
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [organizationOpen, setOrganizationOpen] = useState(organizationActive)
+
   return (
-    <nav
-      aria-label="Principal"
-      className="border-border bg-surface-raised hidden w-60 shrink-0 border-r lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col"
+    <aside
+      className={`border-border bg-surface-raised hidden shrink-0 border-r transition-[width] lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col ${
+        isCollapsed ? 'w-20' : 'w-60'
+      }`}
     >
-      <p className="text-ink flex items-center gap-2 px-5 py-5 text-lg font-semibold">
-        <img src="/logo.webp" alt="" className="size-10 shrink-0" />
-        Kuantico
-      </p>
+      <div className="flex min-h-20 items-center justify-between gap-2 px-3">
+        <p className="text-ink flex min-w-0 items-center gap-2 text-lg font-semibold">
+          <img src="/logo.webp" alt="" className="size-10 shrink-0" />
+          {!isCollapsed && <span className="truncate">Kuantico</span>}
+        </p>
+        {!isCollapsed && (
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(true)}
+            aria-label="Contraer menú lateral"
+            className="text-ink-muted hover:bg-surface-sunken flex size-10 shrink-0 items-center justify-center rounded-lg"
+          >
+            <PanelIcon className="size-5" />
+          </button>
+        )}
+      </div>
+
+      {isCollapsed && (
+        <button
+          type="button"
+          onClick={() => setIsCollapsed(false)}
+          aria-label="Desplegar menú lateral"
+          className="text-ink-secondary hover:bg-surface-sunken mx-auto mb-3 flex size-11 items-center justify-center rounded-lg"
+        >
+          <PanelIcon className="size-5" />
+        </button>
+      )}
 
       {/* Las acciones principales, dentro del flujo de la sidebar: no pueden
           tapar el contenido como hacía el FAB reposicionado. */}
       <div className="flex flex-col gap-2 px-3 pb-4">
         <NavLink
           to="/movimientos/nuevo"
-          className="bg-ink text-surface flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium hover:opacity-90"
+          aria-label={isCollapsed ? 'Registrar gasto' : undefined}
+          title={isCollapsed ? 'Registrar gasto' : undefined}
+          className="bg-ink text-surface flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium hover:opacity-90"
         >
           <PlusIcon className="size-4" />
-          Registrar gasto
+          {!isCollapsed && 'Registrar gasto'}
         </NavLink>
         <NavLink
           to="/movimientos/nuevo-ingreso"
-          className="border-border text-ink hover:bg-surface-sunken flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-medium"
+          aria-label={isCollapsed ? 'Registrar ingreso' : undefined}
+          title={isCollapsed ? 'Registrar ingreso' : undefined}
+          className="border-border text-ink hover:bg-surface-sunken flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium"
         >
           <IncomeIcon className="text-income size-4" />
-          Registrar ingreso
+          {!isCollapsed && 'Registrar ingreso'}
         </NavLink>
         <NavLink
           to="/facturas"
-          className="border-border text-ink hover:bg-surface-sunken flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-medium"
+          aria-label={isCollapsed ? 'Escanear factura' : undefined}
+          title={isCollapsed ? 'Escanear factura' : undefined}
+          className="border-border text-ink hover:bg-surface-sunken flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium"
         >
           <ScanIcon className="size-4" />
-          Escanear factura
+          {!isCollapsed && 'Escanear factura'}
         </NavLink>
       </div>
 
-      {/* flex-1 empuja el cerrar sesión al fondo del panel. */}
-      <ul className="flex flex-1 flex-col gap-1 px-3">
-        {NAV_ITEMS.map((item) => (
-          <li key={item.to}>
-            <NavLink
-              to={item.to}
-              end={item.to === '/'}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${
-                  isActive
-                    ? 'bg-surface-sunken text-ink'
-                    : 'text-ink-secondary hover:bg-surface-sunken'
-                }`
-              }
-            >
-              {item.icon}
-              {item.label}
-            </NavLink>
-          </li>
-        ))}
-      </ul>
+      <nav aria-label="Principal" className="flex flex-1 flex-col px-3">
+        <ul className="flex flex-col gap-1">
+          {NAV_ITEMS.map((item) => (
+            <SidebarItem key={item.to} item={item} isCollapsed={isCollapsed} />
+          ))}
+        </ul>
 
-      <div className="px-3 pt-2 pb-4">
         <button
           type="button"
-          onClick={() => void logout()}
-          className="text-ink-secondary hover:bg-surface-sunken flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium"
+          onClick={() => {
+            if (isCollapsed) {
+              setIsCollapsed(false)
+              setOrganizationOpen(true)
+            } else {
+              setOrganizationOpen((open) => !open)
+            }
+          }}
+          aria-expanded={!isCollapsed && organizationOpen}
+          aria-controls="organization-navigation"
+          aria-label={isCollapsed ? 'Desplegar Organización' : undefined}
+          title={isCollapsed ? 'Organización' : undefined}
+          className={`mt-3 flex min-h-11 w-full items-center rounded-lg px-3 text-sm font-medium ${
+            organizationActive
+              ? 'text-ink'
+              : 'text-ink-secondary hover:bg-surface-sunken'
+          } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
         >
-          <LogoutIcon className="size-6" />
-          Cerrar sesión
+          <OrganizationIcon className="size-6 shrink-0" />
+          {!isCollapsed && (
+            <>
+              <span className="flex-1 text-left">Organización</span>
+              <ChevronIcon
+                className={`size-4 transition-transform ${organizationOpen ? 'rotate-180' : ''}`}
+              />
+            </>
+          )}
         </button>
-      </div>
-    </nav>
+
+        {!isCollapsed && organizationOpen && (
+          <ul id="organization-navigation" className="mt-1 flex flex-col gap-1 pl-3">
+            {ORGANIZATION_ITEMS.map((item) => (
+              <SidebarItem key={item.to} item={item} isCollapsed={false} compact />
+            ))}
+          </ul>
+        )}
+      </nav>
+    </aside>
+  )
+}
+
+function SidebarItem({
+  item,
+  isCollapsed,
+  compact = false,
+}: {
+  item: NavItem
+  isCollapsed: boolean
+  compact?: boolean
+}) {
+  return (
+    <li>
+      <NavLink
+        to={item.to}
+        end={item.to === '/'}
+        aria-label={isCollapsed ? item.label : undefined}
+        title={isCollapsed ? item.label : undefined}
+        className={({ isActive }) =>
+          `flex min-h-11 items-center rounded-lg text-sm font-medium ${
+            isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'
+          } ${compact ? 'text-[0.8125rem]' : ''} ${
+            isActive
+              ? 'bg-surface-sunken text-ink'
+              : 'text-ink-secondary hover:bg-surface-sunken'
+          }`
+        }
+      >
+        {item.icon}
+        {!isCollapsed && item.label}
+      </NavLink>
+    </li>
+  )
+}
+
+function OrganizationIcon({ className }: { className: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M4 6h6l2 3h8v9H4z" />
+    </svg>
+  )
+}
+
+function ChevronIcon({ className }: { className: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="m5 7.5 5 5 5-5" />
+    </svg>
   )
 }
 
@@ -198,7 +325,7 @@ function TabBar() {
               }
             >
               {item.icon}
-              {/* Con 5 pestañas la etiqueta no debe romper en dos líneas. */}
+              {/* Las etiquetas no deben romper en dos líneas. */}
               <span className="w-full truncate text-center">{item.label}</span>
             </NavLink>
           </li>

@@ -17,7 +17,7 @@ const iconProps = {
   className: 'size-6',
 } as const
 
-/** Cinco destinos en la tab bar (móvil) / sidebar (desktop). */
+/** Destinos financieros principales de la tab bar y el sidebar. */
 export const NAV_ITEMS: NavItem[] = [
   {
     to: '/',
@@ -59,13 +59,28 @@ export const NAV_ITEMS: NavItem[] = [
       </svg>
     ),
   },
+]
+
+/** Tareas de organización menos frecuentes, agrupadas en el sidebar. */
+export const ORGANIZATION_ITEMS: NavItem[] = [
   {
-    to: '/ajustes',
-    label: 'Ajustes',
+    to: '/categorias',
+    label: 'Categorías',
     icon: (
       <svg {...iconProps}>
-        <circle cx="12" cy="12" r="3" />
-        <path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10 1.4 1.4m0-12.8-1.4 1.4m-10 10-1.4 1.4" />
+        <path d="M4 6h7l2 3h7v9H4z" />
+        <path d="M8 13h8" />
+      </svg>
+    ),
+  },
+  {
+    to: '/recurrentes',
+    label: 'Gastos recurrentes',
+    icon: (
+      <svg {...iconProps}>
+        <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+        <path d="M20 5v6h-6" />
+        <path d="M12 8v4l2.5 1.5" />
       </svg>
     ),
   },
