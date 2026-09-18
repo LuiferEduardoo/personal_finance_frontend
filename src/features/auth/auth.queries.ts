@@ -34,10 +34,7 @@ export const LogoutMutation = graphql(`
   }
 `)
 
-/**
- * El usuario autenticado. `id` es imprescindible: categorías, gastos e ingresos
- * lo reciben como argumento explícito porque aún no están migrados al token.
- */
+/** El usuario autenticado que alimenta el menú de perfil y los ajustes. */
 export const MeQuery = graphql(`
   query Me {
     me {

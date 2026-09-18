@@ -20,18 +20,3 @@ export function useSession(): SessionValue {
   }
   return value
 }
-
-/**
- * El `userId` que exigen categorías, gastos e ingresos.
- *
- * Estos hooks lo inyectan solos: ningún componente debe pasar el userId a mano
- * o acabará olvidado en alguna llamada. Lanza si no hay sesión, porque llamar a
- * esas operaciones sin usuario es un bug de rutas, no un caso a manejar.
- */
-export function useCurrentUserId(): string {
-  const { user } = useSession()
-  if (!user) {
-    throw new Error('No hay usuario en sesión: ¿falta un guard de ruta?')
-  }
-  return user.id
-}
