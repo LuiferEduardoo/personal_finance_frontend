@@ -66,6 +66,11 @@ const SettingsPage = lazy(() =>
     default: module.SettingsPage,
   })),
 )
+const ApiKeysPage = lazy(() =>
+  import('@/features/api-keys/ApiKeysPage').then((module) => ({
+    default: module.ApiKeysPage,
+  })),
+)
 
 /** Evita que el layout parpadee mientras llega el trozo de código de la ruta. */
 function Lazy({ children }: { children: ReactNode }) {
@@ -185,6 +190,14 @@ export const router = createBrowserRouter([
             element: (
               <Lazy>
                 <RecurringPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/api-keys',
+            element: (
+              <Lazy>
+                <ApiKeysPage />
               </Lazy>
             ),
           },
