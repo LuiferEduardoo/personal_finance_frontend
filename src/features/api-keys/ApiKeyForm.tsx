@@ -4,6 +4,7 @@ import { Field } from '@/components/Field'
 import type { ApiScope } from '@/graphql/generated/graphql'
 import { todayIso } from '@/lib/dates'
 import {
+  allowedScopes,
   expirationInputValue,
   expirationPayload,
   SCOPE_GROUPS,
@@ -29,7 +30,7 @@ export function ApiKeyForm({
   onSubmit: (value: ApiKeyFormValue) => Promise<void>
 }) {
   const [name, setName] = useState(apiKey?.name ?? '')
-  const [scopes, setScopes] = useState<ApiScope[]>(apiKey?.scopes ?? [])
+  const [scopes, setScopes] = useState<ApiScope[]>(allowedScopes(apiKey?.scopes ?? []))
   const [expiresAt, setExpiresAt] = useState(expirationInputValue(apiKey?.expiresAt))
   const [formError, setFormError] = useState<string | null>(null)
 

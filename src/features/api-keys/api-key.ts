@@ -7,33 +7,18 @@ export const SCOPE_GROUPS: ReadonlyArray<{
   options: ReadonlyArray<{ value: ApiScope; label: string }>
 }> = [
   {
-    label: 'Acceso completo',
-    options: [{ value: 'ALL', label: 'Todos los permisos' }],
-  },
-  {
-    label: 'Movimientos',
+    label: 'Gastos e Ingresos',
     options: [
       { value: 'EXPENSES_READ', label: 'Consultar gastos' },
       { value: 'EXPENSES_WRITE', label: 'Crear y modificar gastos' },
       { value: 'INCOMES_READ', label: 'Consultar ingresos' },
       { value: 'INCOMES_WRITE', label: 'Crear y modificar ingresos' },
-      { value: 'INVOICES_WRITE', label: 'Procesar facturas' },
-    ],
-  },
-  {
-    label: 'Organización',
-    options: [
       { value: 'ACCOUNTS_READ', label: 'Consultar cuentas' },
       { value: 'ACCOUNTS_WRITE', label: 'Gestionar cuentas' },
       { value: 'CATEGORIES_READ', label: 'Consultar categorías' },
       { value: 'CATEGORIES_WRITE', label: 'Gestionar categorías' },
-      { value: 'RECURRING_READ', label: 'Consultar recurrentes' },
-      { value: 'RECURRING_WRITE', label: 'Gestionar recurrentes' },
-    ],
-  },
-  {
-    label: 'Artículos e inventario',
-    options: [
+      { value: 'RECURRING_READ', label: 'Consultar gastos recurrentes' },
+      { value: 'RECURRING_WRITE', label: 'Gestionar gastos recurrentes' },
       { value: 'ARTICLES_READ', label: 'Consultar artículos' },
       { value: 'ARTICLES_WRITE', label: 'Gestionar artículos' },
       { value: 'PRODUCTS_READ', label: 'Consultar productos' },
@@ -41,9 +26,22 @@ export const SCOPE_GROUPS: ReadonlyArray<{
       { value: 'INVENTORY_READ', label: 'Consultar inventario' },
       { value: 'INVENTORY_WRITE', label: 'Gestionar inventario' },
       { value: 'INFLATION_READ', label: 'Consultar inflación' },
+      { value: 'INVOICES_WRITE', label: 'Procesar facturas' },
+    ],
+  },
+  {
+    label: 'Inversiones',
+    options: [
+      { value: 'INVESTMENTS_READ', label: 'Consultar cartera y operaciones' },
+      { value: 'INVESTMENTS_WRITE', label: 'Gestionar operaciones e importaciones' },
+      { value: 'MARKET_DATA_READ', label: 'Consultar instrumentos y mercado' },
     ],
   },
 ]
+
+export const ALLOWED_API_SCOPES = SCOPE_GROUPS.flatMap((group) =>
+  group.options.map((option) => option.value),
+)
 
 const SCOPE_LABELS = new Map(
   SCOPE_GROUPS.flatMap((group) =>
@@ -56,11 +54,13 @@ export function scopeLabel(scope: ApiScope): string {
 }
 
 export function toggleScope(scopes: ApiScope[], scope: ApiScope): ApiScope[] {
-  if (scope === 'ALL') return scopes.includes('ALL') ? [] : ['ALL']
-  const withoutAll = scopes.filter((value) => value !== 'ALL')
-  return withoutAll.includes(scope)
-    ? withoutAll.filter((value) => value !== scope)
-    : [...withoutAll, scope]
+  return scopes.includes(scope)
+    ? scopes.filter((value) => value !== scope)
+    : [...scopes, scope]
+}
+
+export function allowedScopes(scopes: ApiScope[]): ApiScope[] {
+  return scopes.filter((scope) => ALLOWED_API_SCOPES.includes(scope))
 }
 
 export function expirationInputValue(expiresAt: string | null | undefined): string {

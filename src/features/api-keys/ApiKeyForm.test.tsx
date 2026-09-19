@@ -28,7 +28,7 @@ describe('ApiKeyForm', () => {
     render(<ApiKeyForm isSaving={false} onSubmit={onSubmit} />)
 
     await user.type(screen.getByLabelText('Nombre'), 'Dashboard externo')
-    await user.click(screen.getByLabelText('Consultar gastos'))
+    await user.click(screen.getByLabelText('Consultar cartera y operaciones'))
     await user.type(
       screen.getByLabelText('Fecha de expiración (opcional)'),
       '2027-12-31',
@@ -37,19 +37,29 @@ describe('ApiKeyForm', () => {
 
     expect(onSubmit).toHaveBeenCalledWith({
       name: 'Dashboard externo',
-      scopes: ['EXPENSES_READ'],
+      scopes: ['INVESTMENTS_READ'],
       expiresAt: '2027-12-31T23:59:59.999Z',
     })
   })
 
-  it('mantiene el permiso total como opción exclusiva', async () => {
+  it('permite combinar permisos del espacio de inversiones', async () => {
     const user = userEvent.setup()
     render(<ApiKeyForm isSaving={false} onSubmit={vi.fn()} />)
 
-    await user.click(screen.getByLabelText('Consultar gastos'))
-    await user.click(screen.getByLabelText('Todos los permisos'))
+    await user.click(screen.getByLabelText('Consultar cartera y operaciones'))
+    await user.click(screen.getByLabelText('Consultar instrumentos y mercado'))
 
-    expect(screen.getByLabelText('Todos los permisos')).toBeChecked()
-    expect(screen.getByLabelText('Consultar gastos')).not.toBeChecked()
+    expect(screen.getByLabelText('Consultar cartera y operaciones')).toBeChecked()
+    expect(screen.getByLabelText('Consultar instrumentos y mercado')).toBeChecked()
+    expect(screen.queryByLabelText('Todos los permisos')).not.toBeInTheDocument()
+  })
+
+  it('separa los permisos financieros de los permisos de inversiones', () => {
+    render(<ApiKeyForm isSaving={false} onSubmit={vi.fn()} />)
+
+    expect(screen.getByText('Gastos e Ingresos')).toBeInTheDocument()
+    expect(screen.getByText('Inversiones')).toBeInTheDocument()
+    expect(screen.getByLabelText('Consultar gastos')).toBeInTheDocument()
+    expect(screen.getByLabelText('Consultar cartera y operaciones')).toBeInTheDocument()
   })
 })
