@@ -81,6 +81,14 @@ const errorLink = onError(({ graphQLErrors, operation, forward }) => {
 
 export const apolloClient = new ApolloClient({
   link: from([errorLink, authLink, httpLink]),
+  // Al volver a una sección mostramos inmediatamente lo que haya en caché,
+  // pero siempre lo revalidamos contra el backend. Con el valor por defecto
+  // (`cache-first`) navegar entre pantallas podía no producir ninguna petición.
+  defaultOptions: {
+    watchQuery: {
+      fetchPolicy: 'cache-and-network',
+    },
+  },
   cache: new InMemoryCache({
     typePolicies: {
       Query: {
