@@ -1,6 +1,11 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router'
-import { NAV_ITEMS, ORGANIZATION_ITEMS, type NavItem } from './navigation'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
+import {
+  INVESTMENT_NAV_ITEMS,
+  NAV_ITEMS,
+  ORGANIZATION_ITEMS,
+  type NavItem,
+} from './navigation'
 import { ProfileMenu } from './ProfileMenu'
 
 function PlusIcon({ className }: { className: string }) {
@@ -83,16 +88,17 @@ function IncomeIcon({ className }: { className: string }) {
  * filtros de periodo de las páginas, que viven justo en esa esquina.
  */
 export function AppLayout() {
+  const location = useLocation()
+  const isInvestments = location.pathname.startsWith('/inversiones')
   return (
     <div className="bg-surface min-h-dvh lg:flex">
       <SidebarNav />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="border-border bg-surface/95 sticky top-0 z-30 flex min-h-16 items-center justify-between border-b px-4 backdrop-blur sm:px-6">
-          <p className="text-ink flex items-center gap-2 text-sm font-semibold lg:hidden">
-            <img src="/logo.webp" alt="" className="size-8" />
-            Kuantico
-          </p>
+        <header className="border-border bg-surface/95 sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b px-4 backdrop-blur sm:px-6">
+          <div className="min-w-0 flex-1">
+            <WorkspaceSwitch />
+          </div>
           <div className="ml-auto">
             <ProfileMenu />
           </div>
@@ -103,7 +109,13 @@ export function AppLayout() {
          * de la tab bar, la última fila de una lista queda bajo el botón.
          */}
         {/* Despeja la tab bar y los DOS FAB apilados (gasto + ingreso). */}
-        <main className="flex-1 pb-[calc(12rem+var(--spacing-safe-bottom))] lg:pb-8">
+        <main
+          className={`flex-1 lg:pb-8 ${
+            isInvestments
+              ? 'pb-[calc(8rem+var(--spacing-safe-bottom))]'
+              : 'pb-[calc(12rem+var(--spacing-safe-bottom))]'
+          }`}
+        >
           <Outlet />
         </main>
       </div>
@@ -116,6 +128,8 @@ export function AppLayout() {
 
 function SidebarNav() {
   const location = useLocation()
+  const isInvestments = location.pathname.startsWith('/inversiones')
+  const items = isInvestments ? INVESTMENT_NAV_ITEMS : NAV_ITEMS
   const organizationActive = ORGANIZATION_ITEMS.some((item) =>
     location.pathname.startsWith(item.to),
   )
@@ -158,75 +172,92 @@ function SidebarNav() {
 
       {/* Las acciones principales, dentro del flujo de la sidebar: no pueden
           tapar el contenido como hacía el FAB reposicionado. */}
-      <div className="flex flex-col gap-2 px-3 pb-4">
-        <NavLink
-          to="/movimientos/nuevo"
-          aria-label={isCollapsed ? 'Registrar gasto' : undefined}
-          title={isCollapsed ? 'Registrar gasto' : undefined}
-          className="bg-ink text-surface flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium hover:opacity-90"
-        >
-          <PlusIcon className="size-4" />
-          {!isCollapsed && 'Registrar gasto'}
-        </NavLink>
-        <NavLink
-          to="/movimientos/nuevo-ingreso"
-          aria-label={isCollapsed ? 'Registrar ingreso' : undefined}
-          title={isCollapsed ? 'Registrar ingreso' : undefined}
-          className="border-border text-ink hover:bg-surface-sunken flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium"
-        >
-          <IncomeIcon className="text-income size-4" />
-          {!isCollapsed && 'Registrar ingreso'}
-        </NavLink>
-        <NavLink
-          to="/facturas"
-          aria-label={isCollapsed ? 'Escanear factura' : undefined}
-          title={isCollapsed ? 'Escanear factura' : undefined}
-          className="border-border text-ink hover:bg-surface-sunken flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium"
-        >
-          <ScanIcon className="size-4" />
-          {!isCollapsed && 'Escanear factura'}
-        </NavLink>
-      </div>
+      {!isInvestments && (
+        <div className="flex flex-col gap-2 px-3 pb-4">
+          <NavLink
+            to="/movimientos/nuevo"
+            aria-label={isCollapsed ? 'Registrar gasto' : undefined}
+            title={isCollapsed ? 'Registrar gasto' : undefined}
+            className="bg-ink text-surface flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium hover:opacity-90"
+          >
+            <PlusIcon className="size-4" />
+            {!isCollapsed && 'Registrar gasto'}
+          </NavLink>
+          <NavLink
+            to="/movimientos/nuevo-ingreso"
+            aria-label={isCollapsed ? 'Registrar ingreso' : undefined}
+            title={isCollapsed ? 'Registrar ingreso' : undefined}
+            className="border-border text-ink hover:bg-surface-sunken flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium"
+          >
+            <IncomeIcon className="text-income size-4" />
+            {!isCollapsed && 'Registrar ingreso'}
+          </NavLink>
+          <NavLink
+            to="/facturas"
+            aria-label={isCollapsed ? 'Escanear factura' : undefined}
+            title={isCollapsed ? 'Escanear factura' : undefined}
+            className="border-border text-ink hover:bg-surface-sunken flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium"
+          >
+            <ScanIcon className="size-4" />
+            {!isCollapsed && 'Escanear factura'}
+          </NavLink>
+        </div>
+      )}
+
+      {isInvestments && (
+        <div className="px-3 pb-4">
+          <NavLink
+            to="/inversiones/operaciones/nueva"
+            aria-label={isCollapsed ? 'Registrar operación' : undefined}
+            className="bg-ink text-surface flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium hover:opacity-90"
+          >
+            <PlusIcon className="size-4" />
+            {!isCollapsed && 'Registrar operación'}
+          </NavLink>
+        </div>
+      )}
 
       <nav aria-label="Principal" className="flex flex-1 flex-col px-3">
         <ul className="flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => (
+          {items.map((item) => (
             <SidebarItem key={item.to} item={item} isCollapsed={isCollapsed} />
           ))}
         </ul>
 
-        <button
-          type="button"
-          onClick={() => {
-            if (isCollapsed) {
-              setIsCollapsed(false)
-              setOrganizationOpen(true)
-            } else {
-              setOrganizationOpen((open) => !open)
-            }
-          }}
-          aria-expanded={!isCollapsed && organizationOpen}
-          aria-controls="organization-navigation"
-          aria-label={isCollapsed ? 'Desplegar Organización' : undefined}
-          title={isCollapsed ? 'Organización' : undefined}
-          className={`mt-3 flex min-h-11 w-full items-center rounded-lg px-3 text-sm font-medium ${
-            organizationActive
-              ? 'text-ink'
-              : 'text-ink-secondary hover:bg-surface-sunken'
-          } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
-        >
-          <OrganizationIcon className="size-6 shrink-0" />
-          {!isCollapsed && (
-            <>
-              <span className="flex-1 text-left">Organización</span>
-              <ChevronIcon
-                className={`size-4 transition-transform ${organizationOpen ? 'rotate-180' : ''}`}
-              />
-            </>
-          )}
-        </button>
+        {!isInvestments && (
+          <button
+            type="button"
+            onClick={() => {
+              if (isCollapsed) {
+                setIsCollapsed(false)
+                setOrganizationOpen(true)
+              } else {
+                setOrganizationOpen((open) => !open)
+              }
+            }}
+            aria-expanded={!isCollapsed && organizationOpen}
+            aria-controls="organization-navigation"
+            aria-label={isCollapsed ? 'Desplegar Organización' : undefined}
+            title={isCollapsed ? 'Organización' : undefined}
+            className={`mt-3 flex min-h-11 w-full items-center rounded-lg px-3 text-sm font-medium ${
+              organizationActive
+                ? 'text-ink'
+                : 'text-ink-secondary hover:bg-surface-sunken'
+            } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
+          >
+            <OrganizationIcon className="size-6 shrink-0" />
+            {!isCollapsed && (
+              <>
+                <span className="flex-1 text-left">Organización</span>
+                <ChevronIcon
+                  className={`size-4 transition-transform ${organizationOpen ? 'rotate-180' : ''}`}
+                />
+              </>
+            )}
+          </button>
+        )}
 
-        {!isCollapsed && organizationOpen && (
+        {!isInvestments && !isCollapsed && organizationOpen && (
           <ul id="organization-navigation" className="mt-1 flex flex-col gap-1 pl-3">
             {ORGANIZATION_ITEMS.map((item) => (
               <SidebarItem key={item.to} item={item} isCollapsed={false} compact />
@@ -251,7 +282,7 @@ function SidebarItem({
     <li>
       <NavLink
         to={item.to}
-        end={item.to === '/'}
+        end={item.to === '/' || item.to === '/inversiones'}
         aria-label={isCollapsed ? item.label : undefined}
         title={isCollapsed ? item.label : undefined}
         className={({ isActive }) =>
@@ -306,17 +337,21 @@ function ChevronIcon({ className }: { className: string }) {
 }
 
 function TabBar() {
+  const location = useLocation()
+  const items = location.pathname.startsWith('/inversiones')
+    ? INVESTMENT_NAV_ITEMS
+    : NAV_ITEMS
   return (
     <nav
       aria-label="Principal"
       className="border-border bg-surface-raised fixed inset-x-0 bottom-0 z-20 border-t pb-[var(--spacing-safe-bottom)] lg:hidden"
     >
       <ul className="flex">
-        {NAV_ITEMS.map((item) => (
+        {items.map((item) => (
           <li key={item.to} className="flex-1">
             <NavLink
               to={item.to}
-              end={item.to === '/'}
+              end={item.to === '/' || item.to === '/inversiones'}
               className={({ isActive }) =>
                 // min-h-14 mantiene el área táctil por encima de los 44px.
                 `flex min-h-14 flex-col items-center justify-center gap-0.5 px-0.5 text-[0.625rem] ${
@@ -344,6 +379,18 @@ function TabBar() {
  * color para distinguirse.
  */
 function QuickActionFabs() {
+  const location = useLocation()
+  if (location.pathname.startsWith('/inversiones')) {
+    return (
+      <NavLink
+        to="/inversiones/operaciones/nueva"
+        aria-label="Registrar operación"
+        className="bg-ink text-surface fixed right-4 bottom-[calc(4.5rem+var(--spacing-safe-bottom))] z-20 flex size-14 items-center justify-center rounded-full shadow-lg lg:hidden"
+      >
+        <PlusIcon className="size-6" />
+      </NavLink>
+    )
+  }
   return (
     <div className="lg:hidden">
       <NavLink
@@ -361,5 +408,31 @@ function QuickActionFabs() {
         <PlusIcon className="size-6" />
       </NavLink>
     </div>
+  )
+}
+
+function WorkspaceSwitch() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const value = location.pathname.startsWith('/inversiones') ? 'investments' : 'finance'
+
+  return (
+    <label className="block max-w-64">
+      <span className="sr-only">Espacio de trabajo</span>
+      <span className="relative block">
+        <select
+          aria-label="Cambiar espacio de trabajo"
+          value={value}
+          onChange={(event) =>
+            navigate(event.target.value === 'investments' ? '/inversiones' : '/')
+          }
+          className="border-border bg-surface text-ink min-h-10 w-full appearance-none truncate rounded-lg border py-2 pr-10 pl-3 text-sm font-medium"
+        >
+          <option value="finance">Gastos e ingresos</option>
+          <option value="investments">Inversiones</option>
+        </select>
+        <ChevronIcon className="text-ink-muted pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2" />
+      </span>
+    </label>
   )
 }

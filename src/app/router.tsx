@@ -71,6 +71,36 @@ const ApiKeysPage = lazy(() =>
     default: module.ApiKeysPage,
   })),
 )
+const InvestmentOverviewPage = lazy(() =>
+  import('@/features/investments/InvestmentOverviewPage').then((module) => ({
+    default: module.InvestmentOverviewPage,
+  })),
+)
+const InvestmentTransactionsPage = lazy(() =>
+  import('@/features/investments/InvestmentTransactionsPage').then((module) => ({
+    default: module.InvestmentTransactionsPage,
+  })),
+)
+const InvestmentAccountsPage = lazy(() =>
+  import('@/features/investments/InvestmentAccountsPage').then((module) => ({
+    default: module.InvestmentAccountsPage,
+  })),
+)
+const InvestmentImportPage = lazy(() =>
+  import('@/features/investments/InvestmentImportPage').then((module) => ({
+    default: module.InvestmentImportPage,
+  })),
+)
+const BrokerConnectionsPage = lazy(() =>
+  import('@/features/investments/BrokerConnectionsPage').then((module) => ({
+    default: module.BrokerConnectionsPage,
+  })),
+)
+const InvestmentMarketPage = lazy(() =>
+  import('@/features/investments/InvestmentMarketPage').then((module) => ({
+    default: module.InvestmentMarketPage,
+  })),
+)
 
 /** Evita que el layout parpadee mientras llega el trozo de código de la ruta. */
 function Lazy({ children }: { children: ReactNode }) {
@@ -206,6 +236,62 @@ export const router = createBrowserRouter([
             element: (
               <Lazy>
                 <SettingsPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/inversiones',
+            element: (
+              <Lazy>
+                <InvestmentOverviewPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/inversiones/operaciones',
+            element: (
+              <Lazy>
+                <InvestmentTransactionsPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/inversiones/operaciones/nueva',
+            element: (
+              <Lazy>
+                <InvestmentTransactionsPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/inversiones/cuentas',
+            element: (
+              <Lazy>
+                <InvestmentAccountsPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/inversiones/importar',
+            element: (
+              <Lazy>
+                <InvestmentImportPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/inversiones/conexiones',
+            element: (
+              <Lazy>
+                <BrokerConnectionsPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/inversiones/mercado',
+            element: (
+              <Lazy>
+                <InvestmentMarketPage />
               </Lazy>
             ),
           },

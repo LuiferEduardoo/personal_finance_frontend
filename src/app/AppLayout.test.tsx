@@ -20,14 +20,15 @@ const session: SessionValue = {
   logout: vi.fn(),
 }
 
-function renderLayout() {
+function renderLayout(initialEntry = '/') {
   return render(
     <SessionContext value={session}>
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
           <Route element={<AppLayout />}>
             <Route index element={<p>Contenido</p>} />
             <Route path="categorias" element={<p>Categorías</p>} />
+            <Route path="inversiones" element={<p>Cartera</p>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -61,5 +62,22 @@ describe('AppLayout navigation', () => {
     expect(
       sidebar.getByRole('link', { name: 'Gastos recurrentes' }),
     ).toBeInTheDocument()
+  })
+
+  it('cambia entre finanzas e inversiones desde el selector de espacio', async () => {
+    const user = userEvent.setup()
+    renderLayout()
+    const sidebar = within(screen.getByRole('complementary'))
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Cambiar espacio de trabajo' }),
+      'investments',
+    )
+
+    expect(screen.getByText('Cartera')).toBeInTheDocument()
+    expect(sidebar.getByRole('link', { name: 'Resumen' })).toBeInTheDocument()
+    expect(
+      sidebar.queryByRole('link', { name: 'Registrar gasto' }),
+    ).not.toBeInTheDocument()
   })
 })

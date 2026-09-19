@@ -16,6 +16,8 @@ export type Scalars = {
   Float: { input: number; output: number; }
   /** A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format. */
   DateTime: { input: string; output: string; }
+  /** The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf). */
+  JSON: { input: any; output: any; }
 };
 
 export type Account = {
@@ -54,6 +56,37 @@ export type AccountTransfer = {
   toAccountId: Scalars['ID']['output'];
   userId: Scalars['ID']['output'];
 };
+
+/** Eje por el que repartir la cartera */
+export type AllocationDimension =
+  | 'ASSET_CLASS'
+  | 'BROKER'
+  | 'COUNTRY'
+  | 'CURRENCY'
+  | 'INSTRUMENT'
+  | 'SECTOR';
+
+/** Reparto de la cartera por un eje */
+export type AllocationSlice = {
+  __typename?: 'AllocationSlice';
+  /** Base de costo en moneda base */
+  costBasis: Scalars['Float']['output'];
+  /** Clave del grupo (ej. "NASDAQ", "Technology", "US") */
+  key: Scalars['String']['output'];
+  /** Etiqueta legible del grupo */
+  label: Scalars['String']['output'];
+  /** Valor de mercado en moneda base */
+  marketValue: Scalars['Float']['output'];
+  /** Porcentaje sobre el total valorado */
+  percentage: Scalars['Float']['output'];
+  positionsCount: Scalars['Int']['output'];
+};
+
+/** Por qué una rentabilidad anualizada puede venir vacía */
+export type AnnualizedStatus =
+  | 'NO_BASE'
+  | 'OK'
+  | 'PERIOD_TOO_SHORT';
 
 export type ApiKey = {
   __typename?: 'ApiKey';
@@ -98,7 +131,10 @@ export type ApiScope =
   | 'INFLATION_READ'
   | 'INVENTORY_READ'
   | 'INVENTORY_WRITE'
+  | 'INVESTMENTS_READ'
+  | 'INVESTMENTS_WRITE'
   | 'INVOICES_WRITE'
+  | 'MARKET_DATA_READ'
   | 'PRODUCTS_READ'
   | 'PRODUCTS_WRITE'
   | 'RECURRING_READ'
@@ -198,6 +234,83 @@ export type Authentication = {
   provider: AuthProvider;
 };
 
+/** Si la serie del índice incluye dividendos o solo precio */
+export type BenchmarkBasis =
+  | 'PRICE_ONLY'
+  | 'TOTAL_RETURN';
+
+/** Cartera contra índices de referencia */
+export type BenchmarkComparison = {
+  __typename?: 'BenchmarkComparison';
+  baseCurrency: Scalars['String']['output'];
+  from: Scalars['String']['output'];
+  /** true si las series de los índices se convirtieron a la moneda base del usuario */
+  inBaseCurrency: Scalars['Boolean']['output'];
+  /** La primera serie es siempre la cartera */
+  series: Array<ComparisonSeries>;
+  to: Scalars['String']['output'];
+  /** Índices pedidos que no se pudieron construir, y por qué */
+  warnings: Array<Scalars['String']['output']>;
+};
+
+/** Índice de referencia contra el que comparar la cartera */
+export type BenchmarkKey =
+  | 'MSCI_WORLD'
+  | 'NASDAQ100'
+  | 'SP500';
+
+export type BrokerConnection = {
+  __typename?: 'BrokerConnection';
+  /** Se sincroniza sola en el job nocturno */
+  autoSync: Scalars['Boolean']['output'];
+  broker: BrokerKind;
+  createdAt: Scalars['DateTime']['output'];
+  /** Versión de clave con la que se cifraron */
+  credentialsKeyVersion: Scalars['Int']['output'];
+  /** Si la conexión tiene credenciales guardadas */
+  hasCredentials: Scalars['Boolean']['output'];
+  id: Scalars['ID']['output'];
+  /** Cuenta de práctica del bróker */
+  isDemo: Scalars['Boolean']['output'];
+  label: Scalars['String']['output'];
+  lastError?: Maybe<Scalars['String']['output']>;
+  lastSyncedAt?: Maybe<Scalars['DateTime']['output']>;
+  status: BrokerConnectionStatus;
+  updatedAt: Scalars['DateTime']['output'];
+  userId: Scalars['ID']['output'];
+};
+
+/** Estado de una conexión con un bróker */
+export type BrokerConnectionStatus =
+  | 'ACTIVE'
+  | 'DISABLED'
+  | 'ERROR'
+  | 'NEEDS_REAUTH';
+
+/** Bróker o exchange de una cuenta de inversión */
+export type BrokerKind =
+  | 'BINANCE'
+  | 'ETORO'
+  | 'INTERACTIVE_BROKERS'
+  | 'MANUAL'
+  | 'XTB';
+
+/** Resultado de sincronizar una conexión */
+export type BrokerSyncReport = {
+  __typename?: 'BrokerSyncReport';
+  connectionId: Scalars['ID']['output'];
+  /** Descartadas por ya estar en el libro */
+  duplicates: Scalars['Float']['output'];
+  errors: Array<Scalars['String']['output']>;
+  /** Operaciones traídas del bróker */
+  fetched: Scalars['Float']['output'];
+  /** Operaciones nuevas insertadas */
+  inserted: Scalars['Float']['output'];
+  /** true si no se pudo traer todo el periodo */
+  partial: Scalars['Boolean']['output'];
+  warnings: Array<Scalars['String']['output']>;
+};
+
 export type Category = {
   __typename?: 'Category';
   color?: Maybe<Scalars['String']['output']>;
@@ -222,6 +335,31 @@ export type CategoryPriceSeries = {
   points: Array<InflationIndexPoint>;
 };
 
+/** Un punto de una serie normalizada a base 100 */
+export type ComparisonPoint = {
+  __typename?: 'ComparisonPoint';
+  date: Scalars['String']['output'];
+  /** Índice normalizado a 100 en la fecha inicial */
+  index: Scalars['Float']['output'];
+};
+
+/** Una serie de la comparación */
+export type ComparisonSeries = {
+  __typename?: 'ComparisonSeries';
+  annualized?: Maybe<Scalars['Float']['output']>;
+  annualizedStatus: AnnualizedStatus;
+  /** PRICE_ONLY significa que el índice va sin dividendos y la comparación le es desfavorable */
+  basis: BenchmarkBasis;
+  /** Diferencia contra la cartera, en puntos porcentuales */
+  excessReturn?: Maybe<Scalars['Float']['output']>;
+  /** Identificador: "portfolio" o la clave del índice */
+  key: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  points: Array<ComparisonPoint>;
+  /** Rentabilidad del periodo en % */
+  totalReturn?: Maybe<Scalars['Float']['output']>;
+};
+
 export type ConsumptionCycle = {
   __typename?: 'ConsumptionCycle';
   article: Article;
@@ -235,6 +373,11 @@ export type ConsumptionCycle = {
   quantity: Scalars['Float']['output'];
   startedOn: Scalars['String']['output'];
 };
+
+/** Tipo de acción corporativa */
+export type CorporateActionType =
+  | 'DIVIDEND'
+  | 'SPLIT';
 
 export type CreateAccountInput = {
   /** Solo tarjetas de crédito */
@@ -268,6 +411,16 @@ export type CreateArticleInput = {
   /** producto / servicio / otro */
   type?: InputMaybe<ArticleType>;
   unit?: InputMaybe<UnitOfMeasure>;
+};
+
+export type CreateBrokerConnectionInput = {
+  autoSync?: InputMaybe<Scalars['Boolean']['input']>;
+  broker: BrokerKind;
+  /** Credenciales del bróker. Binance: apiKey, apiSecret. eToro: apiKey, userKey. IBKR: token, queryId. XTB: userId, password. */
+  credentials: Scalars['JSON']['input'];
+  isDemo?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Nombre para distinguirla (ej. "Binance principal") */
+  label: Scalars['String']['input'];
 };
 
 export type CreateCategoryInput = {
@@ -310,6 +463,74 @@ export type CreateIncomeInput = {
   occurredOn: Scalars['String']['input'];
   recurrence?: InputMaybe<Recurrence>;
   source?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type CreateInstrumentInput = {
+  assetClass?: InputMaybe<InstrumentAssetClass>;
+  /** Marca el instrumento como índice de referencia */
+  benchmarkKey?: InputMaybe<BenchmarkKey>;
+  /** Código ISO 3166-1 alfa-2 */
+  country?: InputMaybe<Scalars['String']['input']>;
+  /** Moneda en la que cotiza (ISO 4217) */
+  currency: Scalars['String']['input'];
+  /** Bolsa (ej. "NASDAQ") */
+  exchange?: InputMaybe<Scalars['String']['input']>;
+  industry?: InputMaybe<Scalars['String']['input']>;
+  isin?: InputMaybe<Scalars['String']['input']>;
+  micCode?: InputMaybe<Scalars['String']['input']>;
+  /** Nombre del instrumento */
+  name: Scalars['String']['input'];
+  sector?: InputMaybe<Scalars['String']['input']>;
+  /** Ticker (ej. "AAPL", "BTC/USD") */
+  symbol: Scalars['String']['input'];
+  /** Símbolo a usar contra Twelve Data */
+  twelveDataSymbol?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type CreateInvestmentAccountInput = {
+  broker?: InputMaybe<BrokerKind>;
+  /** Moneda principal de la cuenta (ISO 4217) */
+  currency?: InputMaybe<Scalars['String']['input']>;
+  /** Cuenta de payment_methods asociada (reservado) */
+  linkedPaymentMethodId?: InputMaybe<Scalars['ID']['input']>;
+  /** Nombre de la cuenta (ej. "IBKR Individual") */
+  name: Scalars['String']['input'];
+};
+
+export type CreateInvestmentTransactionInput = {
+  accountId: Scalars['ID']['input'];
+  /** Importe bruto y positivo. Si se omite en una compra o venta se calcula como cantidad x precio */
+  amount?: InputMaybe<Scalars['Float']['input']>;
+  /** Solo TRANSFER_OUT: cuenta destino. Los lotes se reabren allí conservando su base */
+  counterpartyAccountId?: InputMaybe<Scalars['ID']['input']>;
+  /** Moneda de la operación (ISO 4217) */
+  currency?: InputMaybe<Scalars['String']['input']>;
+  fee?: InputMaybe<Scalars['Float']['input']>;
+  /** Tasa de cambio a la moneda base del usuario */
+  fxRate?: InputMaybe<Scalars['Float']['input']>;
+  /** Obligatorio en BUY, SELL, SPLIT, TRANSFER_IN y TRANSFER_OUT */
+  instrumentId?: InputMaybe<Scalars['ID']['input']>;
+  notes?: InputMaybe<Scalars['String']['input']>;
+  /** Hora exacta; desempata el orden FIFO dentro del mismo día */
+  occurredAt?: InputMaybe<Scalars['DateTime']['input']>;
+  /** Fecha de la operación (YYYY-MM-DD) */
+  occurredOn: Scalars['String']['input'];
+  /** Solo para registrar a propósito dos operaciones idénticas el mismo día */
+  occurrenceIndex?: InputMaybe<Scalars['Int']['input']>;
+  /** Precio unitario */
+  price?: InputMaybe<Scalars['Float']['input']>;
+  /** Siempre positiva */
+  quantity?: InputMaybe<Scalars['Float']['input']>;
+  /** Solo CURRENCY_EXCHANGE */
+  settlementAmount?: InputMaybe<Scalars['Float']['input']>;
+  /** Solo CURRENCY_EXCHANGE */
+  settlementCurrency?: InputMaybe<Scalars['String']['input']>;
+  /** Solo SPLIT (ej. 1 en un 2:1) */
+  splitRatioDenominator?: InputMaybe<Scalars['Int']['input']>;
+  /** Solo SPLIT (ej. 2 en un 2:1) */
+  splitRatioNumerator?: InputMaybe<Scalars['Int']['input']>;
+  tax?: InputMaybe<Scalars['Float']['input']>;
+  type: InvestmentTransactionType;
 };
 
 export type CreateRecurringExpenseInput = {
@@ -385,6 +606,13 @@ export type ExpenseItemInput = {
   unitPrice: Scalars['Float']['input'];
 };
 
+/** Origen de la tasa de cambio guardada en la operación */
+export type FxRateSource =
+  | 'ASSUMED_ONE'
+  | 'BROKER'
+  | 'MANUAL'
+  | 'TWELVE_DATA';
+
 export type Income = {
   __typename?: 'Income';
   account?: Maybe<Account>;
@@ -455,6 +683,173 @@ export type InflationReport = {
   points: Array<InflationPoint>;
 };
 
+export type Instrument = {
+  __typename?: 'Instrument';
+  assetClass: InstrumentAssetClass;
+  backfillRequestedFrom?: Maybe<Scalars['String']['output']>;
+  benchmarkKey?: Maybe<BenchmarkKey>;
+  /** Código ISO 3166-1 alfa-2 */
+  country?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  /** Moneda en la que cotiza */
+  currency: Scalars['String']['output'];
+  exchange?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  industry?: Maybe<Scalars['String']['output']>;
+  isin?: Maybe<Scalars['String']['output']>;
+  lastPrice?: Maybe<Scalars['Float']['output']>;
+  lastPriceOn?: Maybe<Scalars['String']['output']>;
+  lastSyncedAt?: Maybe<Scalars['DateTime']['output']>;
+  micCode?: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  needsDailyPrice: Scalars['Boolean']['output'];
+  priceSource: InstrumentPriceSource;
+  sector?: Maybe<Scalars['String']['output']>;
+  /** Ticker tal como lo usa el usuario (ej. "AAPL") */
+  symbol: Scalars['String']['output'];
+  twelveDataSymbol?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+/** Tipo de activo del instrumento */
+export type InstrumentAssetClass =
+  | 'BOND'
+  | 'CASH'
+  | 'CFD'
+  | 'COMMODITY'
+  | 'CRYPTO'
+  | 'EQUITY'
+  | 'ETF'
+  | 'FOREX'
+  | 'FUND'
+  | 'OTHER';
+
+/** De dónde salen los precios del instrumento */
+export type InstrumentPriceSource =
+  | 'BROKER'
+  | 'MANUAL'
+  | 'NONE'
+  | 'TWELVE_DATA';
+
+export type InvestmentAccount = {
+  __typename?: 'InvestmentAccount';
+  broker: BrokerKind;
+  connectionId?: Maybe<Scalars['ID']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  /** Moneda principal de la cuenta */
+  currency: Scalars['String']['output'];
+  externalAccountId?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  isActive: Scalars['Boolean']['output'];
+  linkedPaymentMethodId?: Maybe<Scalars['ID']['output']>;
+  name: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+  userId: Scalars['ID']['output'];
+};
+
+export type InvestmentCashBalance = {
+  __typename?: 'InvestmentCashBalance';
+  amount: Scalars['Float']['output'];
+  currency: Scalars['String']['output'];
+};
+
+export type InvestmentLot = {
+  __typename?: 'InvestmentLot';
+  account: InvestmentAccount;
+  accountId: Scalars['ID']['output'];
+  closedOn?: Maybe<Scalars['String']['output']>;
+  costBasisIsEstimated: Scalars['Boolean']['output'];
+  /** Costo unitario en la moneda del lote */
+  costPerUnit: Scalars['Float']['output'];
+  /** Costo unitario en la moneda base del usuario */
+  costPerUnitBase: Scalars['Float']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  currency: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  instrument: Instrument;
+  instrumentId: Scalars['ID']['output'];
+  openTransactionId?: Maybe<Scalars['ID']['output']>;
+  /** Fecha de apertura del lote (YYYY-MM-DD) */
+  openedOn: Scalars['String']['output'];
+  /** Cantidad que queda sin vender */
+  quantityOpen: Scalars['Float']['output'];
+  quantityOriginal: Scalars['Float']['output'];
+  userId: Scalars['ID']['output'];
+};
+
+export type InvestmentPositionsFilterInput = {
+  accountId?: InputMaybe<Scalars['ID']['input']>;
+  /** Valorar a esta fecha (YYYY-MM-DD). Por defecto, hoy */
+  asOf?: InputMaybe<Scalars['String']['input']>;
+  /** Incluye posiciones cerradas (cantidad 0) */
+  includeClosed?: InputMaybe<Scalars['Boolean']['input']>;
+  instrumentId?: InputMaybe<Scalars['ID']['input']>;
+};
+
+export type InvestmentTransaction = {
+  __typename?: 'InvestmentTransaction';
+  account: InvestmentAccount;
+  accountId: Scalars['ID']['output'];
+  /** Importe bruto, siempre positivo */
+  amount: Scalars['Float']['output'];
+  connectionId?: Maybe<Scalars['ID']['output']>;
+  counterpartyAccountId?: Maybe<Scalars['ID']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  currency: Scalars['String']['output'];
+  externalId?: Maybe<Scalars['String']['output']>;
+  fee: Scalars['Float']['output'];
+  fxRate: Scalars['Float']['output'];
+  fxRateSource: FxRateSource;
+  id: Scalars['ID']['output'];
+  importBatchId?: Maybe<Scalars['ID']['output']>;
+  instrument?: Maybe<Instrument>;
+  instrumentId?: Maybe<Scalars['ID']['output']>;
+  notes?: Maybe<Scalars['String']['output']>;
+  occurredAt?: Maybe<Scalars['DateTime']['output']>;
+  /** Fecha de la operación (YYYY-MM-DD) */
+  occurredOn: Scalars['String']['output'];
+  occurrenceIndex: Scalars['Int']['output'];
+  /** Precio unitario */
+  price?: Maybe<Scalars['Float']['output']>;
+  quantity?: Maybe<Scalars['Float']['output']>;
+  settlementAmount?: Maybe<Scalars['Float']['output']>;
+  settlementCurrency?: Maybe<Scalars['String']['output']>;
+  splitRatioDenominator?: Maybe<Scalars['Int']['output']>;
+  splitRatioNumerator?: Maybe<Scalars['Int']['output']>;
+  tax: Scalars['Float']['output'];
+  type: InvestmentTransactionType;
+  updatedAt: Scalars['DateTime']['output'];
+  userId: Scalars['ID']['output'];
+};
+
+/** Tipo de operación de inversión */
+export type InvestmentTransactionType =
+  | 'BUY'
+  | 'CURRENCY_EXCHANGE'
+  | 'DEPOSIT'
+  | 'DIVIDEND'
+  | 'FEE'
+  | 'INTEREST'
+  | 'SELL'
+  | 'SPLIT'
+  | 'TAX'
+  | 'TRANSFER_IN'
+  | 'TRANSFER_OUT'
+  | 'WITHDRAWAL';
+
+export type InvestmentTransactionsFilterInput = {
+  accountId?: InputMaybe<Scalars['ID']['input']>;
+  /** Desde (YYYY-MM-DD), inclusive */
+  from?: InputMaybe<Scalars['String']['input']>;
+  instrumentId?: InputMaybe<Scalars['ID']['input']>;
+  /** Máximo 500 */
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  /** Hasta (YYYY-MM-DD), inclusive */
+  to?: InputMaybe<Scalars['String']['input']>;
+  types?: InputMaybe<Array<InvestmentTransactionType>>;
+};
+
 export type LoginInput = {
   email: Scalars['String']['input'];
   password: Scalars['String']['input'];
@@ -462,21 +857,41 @@ export type LoginInput = {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  /** Registra la operación correspondiente a una acción corporativa que confirmes que te falta */
+  applyCorporateAction: InvestmentTransaction;
   createAccount: Account;
   /** Crea una API key. El token completo solo se devuelve en esta respuesta */
   createApiKey: ApiKeyCreated;
   createArticle: Article;
+  /** Guarda una conexión. Las credenciales se cifran con AES-256-GCM y no vuelven a salir. */
+  createBrokerConnection: BrokerConnection;
   createCategory: Category;
   createExpense: Expense;
   createIncome: Income;
+  /** Registra un instrumento nuevo (acción, ETF, cripto, etc.) */
+  createInstrument: Instrument;
+  createInvestmentAccount: InvestmentAccount;
+  /** Registra una operación. Reconstruye lotes y posiciones en la misma transacción. */
+  createInvestmentTransaction: InvestmentTransaction;
   createRecurringExpense: RecurringExpense;
+  deleteBrokerConnection: Scalars['Boolean']['output'];
+  deleteInvestmentAccount: Scalars['Boolean']['output'];
+  deleteInvestmentTransaction: Scalars['Boolean']['output'];
   login: AuthPayload;
   /** Revoca el refresh token (cierra la sesión) */
   logout: Scalars['Boolean']['output'];
   /** Marca el artículo como agotado: cierra el ciclo de consumo y lo agrega a la lista de compras */
   markProductDepleted: Article;
+  /** Recalcula lotes, posiciones y efectivo desde el libro de operaciones. Válvula manual: el resultado debe coincidir con el camino incremental. */
+  rebuildInvestmentPositions: Scalars['Boolean']['output'];
+  /** Reconstruye la serie diaria de la cartera sin llamar al proveedor de precios */
+  rebuildPortfolioSnapshots: Scalars['String']['output'];
   /** Recalcula el saldo de la cuenta desde sus movimientos */
   recalculateAccountBalance: Account;
+  /** Descarga dividendos y splits anunciados de los instrumentos en cartera (2 créditos por instrumento) */
+  refreshCorporateActions: Scalars['String']['output'];
+  /** Refresca precios y tasas desde Twelve Data y reconstruye los snapshots. Respeta el presupuesto diario: si se agota, para y retoma en el siguiente ciclo. */
+  refreshInvestmentPrices: Scalars['String']['output'];
   /** Rota el refresh token y emite un nuevo par de tokens */
   refreshTokens: AuthPayload;
   register: AuthPayload;
@@ -491,21 +906,45 @@ export type Mutation = {
   removeIncome: Scalars['Boolean']['output'];
   removeProduct: Scalars['Boolean']['output'];
   removeRecurringExpense: Scalars['Boolean']['output'];
+  /** Re-resuelve la tasa de cambio de las operaciones que se guardaron con tasa 1 por no existir todavía caché de tasas. Respeta las tasas escritas a mano. Devuelve cuántas se corrigieron. */
+  resolveInvestmentFxRates: Scalars['Int']['output'];
   /** Revoca la key: deja de autenticar de inmediato */
   revokeApiKey: ApiKey;
+  /** Vuelve a cifrar las credenciales con la clave actual. Rotación sin cortar el servicio: pon la clave vieja en INVESTMENTS_ENCRYPTION_KEY_PREVIOUS y la nueva en INVESTMENTS_ENCRYPTION_KEY. */
+  rotateBrokerCredentials: Scalars['Int']['output'];
   /** Genera los gastos recurrentes vencidos (lo hace también un job diario). Devuelve cuántos se crearon. */
   runDueRecurringExpenses: Scalars['Int']['output'];
+  /** Fija manualmente el precio de cierre de un instrumento para una fecha */
+  setInstrumentPrice: Instrument;
+  /** Corrige la base de costo de un lote estimado (típico de un TRANSFER_IN sin precio) */
+  setLotCostBasis: InvestmentLot;
+  /** Sincroniza todas las conexiones activas */
+  syncAllBrokerConnections: Array<BrokerSyncReport>;
+  /** Trae las operaciones del bróker. Es idempotente: resincronizar un periodo ya traído no duplica nada. */
+  syncBrokerConnection: BrokerSyncReport;
   /** Transfiere saldo entre cuentas. Transferir a una cuenta de crédito paga la tarjeta. */
   transferBetweenAccounts: AccountTransfer;
   updateAccount: Account;
   /** Cambia nombre, scopes o expiración */
   updateApiKey: ApiKey;
   updateArticle: Article;
+  updateBrokerConnection: BrokerConnection;
   updateCategory: Category;
   updateExpense: Expense;
   updateIncome: Income;
+  updateInstrument: Instrument;
+  updateInvestmentAccount: InvestmentAccount;
+  updateInvestmentTransaction: InvestmentTransaction;
   updateProduct: Article;
   updateRecurringExpense: RecurringExpense;
+  /** Comprueba las credenciales contra el bróker y actualiza el estado de la conexión */
+  verifyBrokerConnection: BrokerConnection;
+};
+
+
+export type MutationApplyCorporateActionArgs = {
+  accountId: Scalars['ID']['input'];
+  actionId: Scalars['ID']['input'];
 };
 
 
@@ -524,6 +963,11 @@ export type MutationCreateArticleArgs = {
 };
 
 
+export type MutationCreateBrokerConnectionArgs = {
+  input: CreateBrokerConnectionInput;
+};
+
+
 export type MutationCreateCategoryArgs = {
   input: CreateCategoryInput;
 };
@@ -539,8 +983,38 @@ export type MutationCreateIncomeArgs = {
 };
 
 
+export type MutationCreateInstrumentArgs = {
+  input: CreateInstrumentInput;
+};
+
+
+export type MutationCreateInvestmentAccountArgs = {
+  input: CreateInvestmentAccountInput;
+};
+
+
+export type MutationCreateInvestmentTransactionArgs = {
+  input: CreateInvestmentTransactionInput;
+};
+
+
 export type MutationCreateRecurringExpenseArgs = {
   input: CreateRecurringExpenseInput;
+};
+
+
+export type MutationDeleteBrokerConnectionArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type MutationDeleteInvestmentAccountArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type MutationDeleteInvestmentTransactionArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -557,6 +1031,11 @@ export type MutationLogoutArgs = {
 export type MutationMarkProductDepletedArgs = {
   articleId: Scalars['ID']['input'];
   depletedOn?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationRebuildInvestmentPositionsArgs = {
+  accountId?: InputMaybe<Scalars['ID']['input']>;
 };
 
 
@@ -625,6 +1104,21 @@ export type MutationRevokeApiKeyArgs = {
 };
 
 
+export type MutationSetInstrumentPriceArgs = {
+  input: SetInstrumentPriceInput;
+};
+
+
+export type MutationSetLotCostBasisArgs = {
+  input: SetLotCostBasisInput;
+};
+
+
+export type MutationSyncBrokerConnectionArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type MutationTransferBetweenAccountsArgs = {
   input: TransferInput;
 };
@@ -645,6 +1139,11 @@ export type MutationUpdateArticleArgs = {
 };
 
 
+export type MutationUpdateBrokerConnectionArgs = {
+  input: UpdateBrokerConnectionInput;
+};
+
+
 export type MutationUpdateCategoryArgs = {
   input: UpdateCategoryInput;
 };
@@ -660,6 +1159,21 @@ export type MutationUpdateIncomeArgs = {
 };
 
 
+export type MutationUpdateInstrumentArgs = {
+  input: UpdateInstrumentInput;
+};
+
+
+export type MutationUpdateInvestmentAccountArgs = {
+  input: UpdateInvestmentAccountInput;
+};
+
+
+export type MutationUpdateInvestmentTransactionArgs = {
+  input: UpdateInvestmentTransactionInput;
+};
+
+
 export type MutationUpdateProductArgs = {
   input: UpdateProductInput;
 };
@@ -669,6 +1183,11 @@ export type MutationUpdateRecurringExpenseArgs = {
   input: UpdateRecurringExpenseInput;
 };
 
+
+export type MutationVerifyBrokerConnectionArgs = {
+  id: Scalars['ID']['input'];
+};
+
 export type PaymentMethodType =
   | 'BANK_TRANSFER'
   | 'CASH'
@@ -676,6 +1195,180 @@ export type PaymentMethodType =
   | 'DEBIT'
   | 'DIGITAL_WALLET'
   | 'OTHER';
+
+/** Acción corporativa que parece afectarte y que NO tienes registrada */
+export type PendingCorporateAction = {
+  __typename?: 'PendingCorporateAction';
+  /** Cuentas donde tenías el activo en esa fecha */
+  accountIds: Array<Scalars['ID']['output']>;
+  /** Dividendo por título anunciado */
+  amountPerShare?: Maybe<Scalars['Float']['output']>;
+  currency?: Maybe<Scalars['String']['output']>;
+  description?: Maybe<Scalars['String']['output']>;
+  /** Importe bruto estimado = títulos x dividendo por título */
+  estimatedAmount?: Maybe<Scalars['Float']['output']>;
+  /** Fecha ex-dividendo o de efecto del split */
+  exDate: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  instrumentId: Scalars['ID']['output'];
+  instrumentName: Scalars['String']['output'];
+  /** Títulos que tenías en esa fecha, según tu libro */
+  quantityHeld?: Maybe<Scalars['Float']['output']>;
+  ratioDenominator?: Maybe<Scalars['Int']['output']>;
+  ratioNumerator?: Maybe<Scalars['Int']['output']>;
+  symbol: Scalars['String']['output'];
+  type: CorporateActionType;
+};
+
+/** Distribución de la cartera por un eje */
+export type PortfolioAllocation = {
+  __typename?: 'PortfolioAllocation';
+  /** Fecha de valoración */
+  asOf: Scalars['String']['output'];
+  /** Moneda base del usuario */
+  baseCurrency: Scalars['String']['output'];
+  /** Posiciones excluidas por no tener precio */
+  missingPriceCount: Scalars['Int']['output'];
+  slices: Array<AllocationSlice>;
+  /** Total valorado; excluye las posiciones sin precio */
+  total: Scalars['Float']['output'];
+};
+
+/** Evolución histórica del patrimonio invertido */
+export type PortfolioEvolution = {
+  __typename?: 'PortfolioEvolution';
+  baseCurrency: Scalars['String']['output'];
+  /** Días cuya valoración usó precios o tasas arrastrados */
+  estimatedDays: Scalars['Int']['output'];
+  /** true si se escribieron operaciones después de construir esta serie. Ejecuta rebuildPortfolioSnapshots para ponerla al día. */
+  isStale: Scalars['Boolean']['output'];
+  points: Array<PortfolioEvolutionPoint>;
+};
+
+/** Un día de la evolución del patrimonio */
+export type PortfolioEvolutionPoint = {
+  __typename?: 'PortfolioEvolutionPoint';
+  cash: Scalars['Float']['output'];
+  /** Capital aportado acumulado */
+  contributions: Scalars['Float']['output'];
+  costBasis: Scalars['Float']['output'];
+  /** Fecha (YYYY-MM-DD) */
+  date: Scalars['String']['output'];
+  dividends: Scalars['Float']['output'];
+  /** true si algún precio o tasa se arrastró */
+  isEstimated: Scalars['Boolean']['output'];
+  marketValue: Scalars['Float']['output'];
+  missingPriceCount: Scalars['Int']['output'];
+  /** Flujo externo neto del día */
+  netFlow: Scalars['Float']['output'];
+  realizedPnl: Scalars['Float']['output'];
+  /** Valor total: posiciones más efectivo */
+  totalValue: Scalars['Float']['output'];
+  /** Índice TWR encadenado, base 100 */
+  twrIndex: Scalars['Float']['output'];
+  unrealizedPnl: Scalars['Float']['output'];
+};
+
+/** Rentabilidad de la cartera por los tres métodos, que responden preguntas distintas */
+export type PortfolioReturns = {
+  __typename?: 'PortfolioReturns';
+  baseCurrency: Scalars['String']['output'];
+  dividends: Scalars['Float']['output'];
+  /** Valor de la cartera al final del periodo */
+  endingValue: Scalars['Float']['output'];
+  /** Inicio del periodo (YYYY-MM-DD) */
+  from: Scalars['String']['output'];
+  /** Capital aportado neto */
+  investedCapital: Scalars['Float']['output'];
+  /** true si se escribieron operaciones después del último snapshot. Mientras sea true, el TWR y el XIRR van por detrás de portfolioSummary; ejecuta rebuildPortfolioSnapshots. */
+  isStale: Scalars['Boolean']['output'];
+  realizedPnl: Scalars['Float']['output'];
+  /** Rentabilidad simple: (valor actual - capital aportado) / capital aportado */
+  simpleReturn?: Maybe<Scalars['Float']['output']>;
+  /** Fin del periodo (YYYY-MM-DD) */
+  to: Scalars['String']['output'];
+  /** TWR del periodo en %. Neutraliza el momento de los aportes: mide cómo lo hicieron las inversiones */
+  twr?: Maybe<Scalars['Float']['output']>;
+  /** TWR anualizado. null por debajo de 365 días, a propósito */
+  twrAnnualized?: Maybe<Scalars['Float']['output']>;
+  /** Por qué twrAnnualized es null, si lo es */
+  twrAnnualizedStatus: AnnualizedStatus;
+  unrealizedPnl: Scalars['Float']['output'];
+  /** XIRR / MWR en %. SÍ depende de cuándo metiste el dinero: es tu rentabilidad real */
+  xirr?: Maybe<Scalars['Float']['output']>;
+  /** Por qué xirr es null, si lo es */
+  xirrStatus: XirrStatus;
+};
+
+/** Resumen de la cartera a una fecha, en la moneda base del usuario */
+export type PortfolioSummary = {
+  __typename?: 'PortfolioSummary';
+  /** Fecha de valoración (YYYY-MM-DD) */
+  asOf: Scalars['String']['output'];
+  /** Moneda base del usuario */
+  baseCurrency: Scalars['String']['output'];
+  /** Efectivo disponible en moneda base */
+  cash: Scalars['Float']['output'];
+  /** Patrimonio invertido: base de costo de las posiciones abiertas */
+  costBasis: Scalars['Float']['output'];
+  /** Dividendos recibidos, netos de retención */
+  dividends: Scalars['Float']['output'];
+  /** Posiciones cuya base de costo es una estimación */
+  estimatedBasisPositionsCount: Scalars['Int']['output'];
+  /** Comisiones pagadas */
+  fees: Scalars['Float']['output'];
+  /** Intereses recibidos, netos */
+  interest: Scalars['Float']['output'];
+  /** Capital aportado: depósitos menos retiros */
+  investedCapital: Scalars['Float']['output'];
+  /** Valor actual: posiciones a precio de mercado más efectivo */
+  marketValue: Scalars['Float']['output'];
+  /** Posiciones sin precio: NO se valoran en 0, se excluyen y se cuentan aquí */
+  missingPriceCount: Scalars['Int']['output'];
+  /** Posiciones abiertas */
+  positionsCount: Scalars['Int']['output'];
+  /** Precio más antiguo usado en la valoración */
+  pricesAsOf?: Maybe<Scalars['String']['output']>;
+  /** true si alguna posición se está valorando con un precio anterior a la fecha pedida */
+  pricesStale: Scalars['Boolean']['output'];
+  /** Ganancia o pérdida REALIZADA acumulada */
+  realizedPnl: Scalars['Float']['output'];
+  /** Rentabilidad simple en %: (valor actual - capital aportado) / capital aportado. null sin capital aportado */
+  simpleReturn?: Maybe<Scalars['Float']['output']>;
+  /** Impuestos pagados */
+  taxes: Scalars['Float']['output'];
+  /** Ganancia o pérdida NO realizada */
+  unrealizedPnl: Scalars['Float']['output'];
+};
+
+/** Posición viva valorada a precio de mercado */
+export type PositionView = {
+  __typename?: 'PositionView';
+  account: InvestmentAccount;
+  /** Costo promedio de los lotes abiertos */
+  averageCost: Scalars['Float']['output'];
+  /** Base de costo en la moneda del activo */
+  costBasis: Scalars['Float']['output'];
+  /** Base de costo en la moneda base */
+  costBasisBase: Scalars['Float']['output'];
+  /** true si la base de costo salió de un precio de mercado o quedó sin resolver */
+  costBasisIsEstimated: Scalars['Boolean']['output'];
+  currency: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  instrument: Instrument;
+  /** Último precio conocido. null si no hay precio disponible */
+  lastPrice?: Maybe<Scalars['Float']['output']>;
+  lastPriceOn?: Maybe<Scalars['String']['output']>;
+  /** Valor de mercado en moneda base. null sin precio */
+  marketValueBase?: Maybe<Scalars['Float']['output']>;
+  /** true si no hay ningún precio para valorar la posición */
+  priceMissing: Scalars['Boolean']['output'];
+  quantity: Scalars['Float']['output'];
+  realizedPnlToDateBase: Scalars['Float']['output'];
+  unrealizedPnlBase?: Maybe<Scalars['Float']['output']>;
+  /** Rentabilidad no realizada en % */
+  unrealizedReturn?: Maybe<Scalars['Float']['output']>;
+};
 
 export type ProductPurchase = {
   __typename?: 'ProductPurchase';
@@ -725,6 +1418,11 @@ export type Query = {
   articleInflation: ArticleInflationReport;
   /** Catálogo de artículos del usuario (productos, servicios, etc.) */
   articles: Array<Article>;
+  /** Compara la curva TWR de la cartera contra S&P 500, Nasdaq-100 o MSCI World */
+  benchmarkComparison: BenchmarkComparison;
+  brokerConnection: BrokerConnection;
+  /** Conexiones con brókers. Las credenciales NUNCA se devuelven: solo hasCredentials. */
+  brokerConnections: Array<BrokerConnection>;
   /** Categorías del sistema + las del usuario */
   categories: Array<Category>;
   category: Category;
@@ -738,8 +1436,33 @@ export type Query = {
   health: Scalars['String']['output'];
   income: Income;
   incomes: Array<Income>;
+  instrument: Instrument;
+  /** Busca instrumentos por ticker o nombre */
+  instrumentSearch: Array<Instrument>;
+  investmentAccount: InvestmentAccount;
+  /** Cuentas de inversión del usuario */
+  investmentAccounts: Array<InvestmentAccount>;
+  /** Saldos de efectivo por moneda */
+  investmentCashBalances: Array<InvestmentCashBalance>;
+  /** Posiciones abiertas valoradas a precio de mercado */
+  investmentPositions: Array<PositionView>;
+  investmentTransaction: InvestmentTransaction;
+  /** Operaciones de inversión. Paginado: el histórico de un bróker pasa fácil de 20 000 filas. */
+  investmentTransactions: Array<InvestmentTransaction>;
+  /** Total de operaciones que cumplen el filtro */
+  investmentTransactionsCount: Scalars['Int']['output'];
   /** Usuario autenticado (requiere Bearer) */
   me: User;
+  /** Dividendos y splits anunciados que te afectaban y NO tienes en el libro. Es una sugerencia: nada se registra solo. */
+  pendingCorporateActions: Array<PendingCorporateAction>;
+  /** Distribución de la cartera por bróker, activo, sector, país, moneda o tipo de activo */
+  portfolioAllocation: PortfolioAllocation;
+  /** Evolución histórica del patrimonio, día a día, con el índice TWR encadenado */
+  portfolioEvolution: PortfolioEvolution;
+  /** Rentabilidad simple, TWR (anualizado) y XIRR/MWR. Responden preguntas distintas. */
+  portfolioReturns: PortfolioReturns;
+  /** Resumen de la cartera: patrimonio invertido, valor actual, capital aportado y P&L */
+  portfolioSummary: PortfolioSummary;
   product: Article;
   /** Historial de compras (opcional por artículo) */
   productPurchases: Array<ProductPurchase>;
@@ -789,6 +1512,19 @@ export type QueryArticlesArgs = {
 };
 
 
+export type QueryBenchmarkComparisonArgs = {
+  benchmarks: Array<BenchmarkKey>;
+  from?: InputMaybe<Scalars['String']['input']>;
+  inBaseCurrency?: InputMaybe<Scalars['Boolean']['input']>;
+  to?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryBrokerConnectionArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type QueryCategoriesArgs = {
   kind?: InputMaybe<TransactionKind>;
 };
@@ -826,6 +1562,75 @@ export type QueryIncomeArgs = {
 
 export type QueryIncomesArgs = {
   filter?: InputMaybe<TransactionsFilterInput>;
+};
+
+
+export type QueryInstrumentArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryInstrumentSearchArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  query: Scalars['String']['input'];
+};
+
+
+export type QueryInvestmentAccountArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryInvestmentAccountsArgs = {
+  includeInactive?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+
+export type QueryInvestmentCashBalancesArgs = {
+  accountId?: InputMaybe<Scalars['ID']['input']>;
+};
+
+
+export type QueryInvestmentPositionsArgs = {
+  filter?: InputMaybe<InvestmentPositionsFilterInput>;
+};
+
+
+export type QueryInvestmentTransactionArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryInvestmentTransactionsArgs = {
+  filter?: InputMaybe<InvestmentTransactionsFilterInput>;
+};
+
+
+export type QueryInvestmentTransactionsCountArgs = {
+  filter?: InputMaybe<InvestmentTransactionsFilterInput>;
+};
+
+
+export type QueryPortfolioAllocationArgs = {
+  asOf?: InputMaybe<Scalars['String']['input']>;
+  dimension: AllocationDimension;
+};
+
+
+export type QueryPortfolioEvolutionArgs = {
+  from?: InputMaybe<Scalars['String']['input']>;
+  to?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryPortfolioReturnsArgs = {
+  from?: InputMaybe<Scalars['String']['input']>;
+  to?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryPortfolioSummaryArgs = {
+  asOf?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -927,6 +1732,20 @@ export type RegisterProductPurchaseInput = {
   unitPrice?: InputMaybe<Scalars['Float']['input']>;
 };
 
+export type SetInstrumentPriceInput = {
+  /** Precio de cierre */
+  close: Scalars['Float']['input'];
+  instrumentId: Scalars['ID']['input'];
+  /** Fecha del precio (YYYY-MM-DD). Por defecto hoy */
+  priceOn?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type SetLotCostBasisInput = {
+  /** Costo unitario real del lote */
+  costPerUnit: Scalars['Float']['input'];
+  lotId: Scalars['ID']['input'];
+};
+
 export type TransactionKind =
   | 'EXPENSE'
   | 'INCOME';
@@ -999,6 +1818,15 @@ export type UpdateArticleInput = {
   unit?: InputMaybe<UnitOfMeasure>;
 };
 
+export type UpdateBrokerConnectionInput = {
+  autoSync?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Solo si quieres reemplazarlas */
+  credentials?: InputMaybe<Scalars['JSON']['input']>;
+  id: Scalars['ID']['input'];
+  isDemo?: InputMaybe<Scalars['Boolean']['input']>;
+  label?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type UpdateCategoryInput = {
   color?: InputMaybe<Scalars['String']['input']>;
   icon?: InputMaybe<Scalars['String']['input']>;
@@ -1043,6 +1871,43 @@ export type UpdateIncomeInput = {
   occurredOn?: InputMaybe<Scalars['String']['input']>;
   recurrence?: InputMaybe<Recurrence>;
   source?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdateInstrumentInput = {
+  country?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['ID']['input'];
+  industry?: InputMaybe<Scalars['String']['input']>;
+  isin?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  sector?: InputMaybe<Scalars['String']['input']>;
+  twelveDataSymbol?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdateInvestmentAccountInput = {
+  broker?: InputMaybe<BrokerKind>;
+  /** Moneda principal de la cuenta (ISO 4217) */
+  currency?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['ID']['input'];
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Cuenta de payment_methods asociada (reservado) */
+  linkedPaymentMethodId?: InputMaybe<Scalars['ID']['input']>;
+  /** Nombre de la cuenta (ej. "IBKR Individual") */
+  name?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdateInvestmentTransactionInput = {
+  amount?: InputMaybe<Scalars['Float']['input']>;
+  fee?: InputMaybe<Scalars['Float']['input']>;
+  fxRate?: InputMaybe<Scalars['Float']['input']>;
+  id: Scalars['ID']['input'];
+  notes?: InputMaybe<Scalars['String']['input']>;
+  occurredAt?: InputMaybe<Scalars['DateTime']['input']>;
+  occurredOn?: InputMaybe<Scalars['String']['input']>;
+  price?: InputMaybe<Scalars['Float']['input']>;
+  quantity?: InputMaybe<Scalars['Float']['input']>;
+  splitRatioDenominator?: InputMaybe<Scalars['Int']['input']>;
+  splitRatioNumerator?: InputMaybe<Scalars['Int']['input']>;
+  tax?: InputMaybe<Scalars['Float']['input']>;
 };
 
 export type UpdateProductInput = {
@@ -1091,6 +1956,13 @@ export type User = {
   lastName?: Maybe<Scalars['String']['output']>;
   timezone: Scalars['String']['output'];
 };
+
+/** Resultado del cálculo de XIRR */
+export type XirrStatus =
+  | 'DID_NOT_CONVERGE'
+  | 'NOT_ENOUGH_FLOWS'
+  | 'NO_SIGN_CHANGE'
+  | 'OK';
 
 export type AccountFieldsFragment = { __typename?: 'Account', id: string, name: string, type: PaymentMethodType, currency: string, openingBalance: number, balance: number, availableCredit?: number | null, creditLimit?: number | null, statementDay?: number | null, dueDay?: number | null, monthlyRate?: number | null, issuer?: string | null, lastFour?: string | null, isActive: boolean };
 
@@ -1281,6 +2153,200 @@ export type ExpenseInflationQueryVariables = Exact<{
 
 export type ExpenseInflationQuery = { __typename?: 'Query', expenseInflation: { __typename?: 'InflationReport', latestMonthlyRate?: number | null, latestAnnualRate?: number | null, averageMonthlyRate?: number | null, points: Array<{ __typename?: 'InflationPoint', period: string, total: number, count: number, monthlyRate?: number | null, annualRate?: number | null }> } };
 
+export type InvestmentOverviewQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type InvestmentOverviewQuery = { __typename?: 'Query', portfolioSummary: { __typename?: 'PortfolioSummary', asOf: string, baseCurrency: string, marketValue: number, investedCapital: number, costBasis: number, cash: number, unrealizedPnl: number, realizedPnl: number, simpleReturn?: number | null, dividends: number, interest: number, fees: number, taxes: number, positionsCount: number, missingPriceCount: number, estimatedBasisPositionsCount: number, pricesAsOf?: string | null, pricesStale: boolean }, portfolioEvolution: { __typename?: 'PortfolioEvolution', baseCurrency: string, estimatedDays: number, isStale: boolean, points: Array<{ __typename?: 'PortfolioEvolutionPoint', date: string, totalValue: number, marketValue: number, cash: number, contributions: number, netFlow: number, unrealizedPnl: number, realizedPnl: number, dividends: number, twrIndex: number, isEstimated: boolean, missingPriceCount: number }> }, investmentPositions: Array<{ __typename?: 'PositionView', id: string, quantity: number, averageCost: number, costBasisBase: number, marketValueBase?: number | null, unrealizedPnlBase?: number | null, unrealizedReturn?: number | null, realizedPnlToDateBase: number, costBasisIsEstimated: boolean, priceMissing: boolean, lastPrice?: number | null, lastPriceOn?: string | null, currency: string, account: { __typename?: 'InvestmentAccount', id: string, name: string, broker: BrokerKind, currency: string }, instrument: { __typename?: 'Instrument', id: string, symbol: string, name: string, assetClass: InstrumentAssetClass, currency: string, sector?: string | null, country?: string | null, lastPrice?: number | null, lastPriceOn?: string | null } }>, pendingCorporateActions: Array<{ __typename?: 'PendingCorporateAction', id: string, type: CorporateActionType, instrumentId: string, symbol: string, instrumentName: string, exDate: string, amountPerShare?: number | null, quantityHeld?: number | null, estimatedAmount?: number | null, ratioNumerator?: number | null, ratioDenominator?: number | null, currency?: string | null, description?: string | null, accountIds: Array<string> }> };
+
+export type InvestmentReturnsQueryVariables = Exact<{
+  from?: InputMaybe<Scalars['String']['input']>;
+  to?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type InvestmentReturnsQuery = { __typename?: 'Query', portfolioReturns: { __typename?: 'PortfolioReturns', from: string, to: string, baseCurrency: string, investedCapital: number, endingValue: number, simpleReturn?: number | null, twr?: number | null, twrAnnualized?: number | null, twrAnnualizedStatus: AnnualizedStatus, xirr?: number | null, xirrStatus: XirrStatus, unrealizedPnl: number, realizedPnl: number, dividends: number, isStale: boolean } };
+
+export type InvestmentAllocationQueryVariables = Exact<{
+  dimension: AllocationDimension;
+}>;
+
+
+export type InvestmentAllocationQuery = { __typename?: 'Query', portfolioAllocation: { __typename?: 'PortfolioAllocation', asOf: string, baseCurrency: string, total: number, missingPriceCount: number, slices: Array<{ __typename?: 'AllocationSlice', key: string, label: string, marketValue: number, costBasis: number, percentage: number, positionsCount: number }> } };
+
+export type InvestmentBenchmarksQueryVariables = Exact<{
+  benchmarks: Array<BenchmarkKey> | BenchmarkKey;
+  from?: InputMaybe<Scalars['String']['input']>;
+  to?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type InvestmentBenchmarksQuery = { __typename?: 'Query', benchmarkComparison: { __typename?: 'BenchmarkComparison', baseCurrency: string, from: string, to: string, inBaseCurrency: boolean, warnings: Array<string>, series: Array<{ __typename?: 'ComparisonSeries', key: string, label: string, totalReturn?: number | null, annualized?: number | null, annualizedStatus: AnnualizedStatus, excessReturn?: number | null, basis: BenchmarkBasis, points: Array<{ __typename?: 'ComparisonPoint', date: string, index: number }> }> } };
+
+export type InvestmentAccountsQueryVariables = Exact<{
+  includeInactive: Scalars['Boolean']['input'];
+}>;
+
+
+export type InvestmentAccountsQuery = { __typename?: 'Query', investmentAccounts: Array<{ __typename?: 'InvestmentAccount', id: string, name: string, broker: BrokerKind, currency: string, isActive: boolean, connectionId?: string | null, externalAccountId?: string | null, linkedPaymentMethodId?: string | null, createdAt: string, updatedAt: string }>, investmentCashBalances: Array<{ __typename?: 'InvestmentCashBalance', currency: string, amount: number }> };
+
+export type InvestmentTransactionsQueryVariables = Exact<{
+  filter?: InputMaybe<InvestmentTransactionsFilterInput>;
+}>;
+
+
+export type InvestmentTransactionsQuery = { __typename?: 'Query', investmentTransactionsCount: number, investmentTransactions: Array<{ __typename?: 'InvestmentTransaction', id: string, accountId: string, type: InvestmentTransactionType, instrumentId?: string | null, occurredOn: string, occurredAt?: string | null, quantity?: number | null, price?: number | null, amount: number, fee: number, tax: number, currency: string, fxRate: number, fxRateSource: FxRateSource, settlementCurrency?: string | null, settlementAmount?: number | null, splitRatioNumerator?: number | null, splitRatioDenominator?: number | null, counterpartyAccountId?: string | null, externalId?: string | null, notes?: string | null, occurrenceIndex: number, createdAt: string, updatedAt: string, account: { __typename?: 'InvestmentAccount', id: string, name: string }, instrument?: { __typename?: 'Instrument', id: string, symbol: string, name: string, assetClass: InstrumentAssetClass } | null }> };
+
+export type InvestmentInstrumentSearchQueryVariables = Exact<{
+  query: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type InvestmentInstrumentSearchQuery = { __typename?: 'Query', instrumentSearch: Array<{ __typename?: 'Instrument', id: string, symbol: string, name: string, exchange?: string | null, assetClass: InstrumentAssetClass, currency: string, sector?: string | null, industry?: string | null, country?: string | null, isin?: string | null, twelveDataSymbol?: string | null, priceSource: InstrumentPriceSource, lastPrice?: number | null, lastPriceOn?: string | null }> };
+
+export type BrokerConnectionsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type BrokerConnectionsQuery = { __typename?: 'Query', brokerConnections: Array<{ __typename?: 'BrokerConnection', id: string, broker: BrokerKind, label: string, isDemo: boolean, autoSync: boolean, hasCredentials: boolean, status: BrokerConnectionStatus, lastError?: string | null, lastSyncedAt?: string | null, createdAt: string, updatedAt: string }> };
+
+export type CreateInvestmentAccountMutationVariables = Exact<{
+  input: CreateInvestmentAccountInput;
+}>;
+
+
+export type CreateInvestmentAccountMutation = { __typename?: 'Mutation', createInvestmentAccount: { __typename?: 'InvestmentAccount', id: string } };
+
+export type UpdateInvestmentAccountMutationVariables = Exact<{
+  input: UpdateInvestmentAccountInput;
+}>;
+
+
+export type UpdateInvestmentAccountMutation = { __typename?: 'Mutation', updateInvestmentAccount: { __typename?: 'InvestmentAccount', id: string } };
+
+export type DeleteInvestmentAccountMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type DeleteInvestmentAccountMutation = { __typename?: 'Mutation', deleteInvestmentAccount: boolean };
+
+export type RebuildInvestmentPositionsMutationVariables = Exact<{
+  accountId?: InputMaybe<Scalars['ID']['input']>;
+}>;
+
+
+export type RebuildInvestmentPositionsMutation = { __typename?: 'Mutation', rebuildInvestmentPositions: boolean };
+
+export type CreateInvestmentTransactionMutationVariables = Exact<{
+  input: CreateInvestmentTransactionInput;
+}>;
+
+
+export type CreateInvestmentTransactionMutation = { __typename?: 'Mutation', createInvestmentTransaction: { __typename?: 'InvestmentTransaction', id: string } };
+
+export type UpdateInvestmentTransactionMutationVariables = Exact<{
+  input: UpdateInvestmentTransactionInput;
+}>;
+
+
+export type UpdateInvestmentTransactionMutation = { __typename?: 'Mutation', updateInvestmentTransaction: { __typename?: 'InvestmentTransaction', id: string } };
+
+export type DeleteInvestmentTransactionMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type DeleteInvestmentTransactionMutation = { __typename?: 'Mutation', deleteInvestmentTransaction: boolean };
+
+export type ResolveInvestmentFxRatesMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ResolveInvestmentFxRatesMutation = { __typename?: 'Mutation', resolveInvestmentFxRates: number };
+
+export type RefreshInvestmentPricesMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type RefreshInvestmentPricesMutation = { __typename?: 'Mutation', refreshInvestmentPrices: string };
+
+export type RebuildPortfolioSnapshotsMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type RebuildPortfolioSnapshotsMutation = { __typename?: 'Mutation', rebuildPortfolioSnapshots: string };
+
+export type RefreshCorporateActionsMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type RefreshCorporateActionsMutation = { __typename?: 'Mutation', refreshCorporateActions: string };
+
+export type ApplyCorporateActionMutationVariables = Exact<{
+  actionId: Scalars['ID']['input'];
+  accountId: Scalars['ID']['input'];
+}>;
+
+
+export type ApplyCorporateActionMutation = { __typename?: 'Mutation', applyCorporateAction: { __typename?: 'InvestmentTransaction', id: string } };
+
+export type CreateInstrumentMutationVariables = Exact<{
+  input: CreateInstrumentInput;
+}>;
+
+
+export type CreateInstrumentMutation = { __typename?: 'Mutation', createInstrument: { __typename?: 'Instrument', id: string, symbol: string, name: string } };
+
+export type UpdateInstrumentMutationVariables = Exact<{
+  input: UpdateInstrumentInput;
+}>;
+
+
+export type UpdateInstrumentMutation = { __typename?: 'Mutation', updateInstrument: { __typename?: 'Instrument', id: string } };
+
+export type SetInstrumentPriceMutationVariables = Exact<{
+  input: SetInstrumentPriceInput;
+}>;
+
+
+export type SetInstrumentPriceMutation = { __typename?: 'Mutation', setInstrumentPrice: { __typename?: 'Instrument', id: string, lastPrice?: number | null, lastPriceOn?: string | null } };
+
+export type CreateBrokerConnectionMutationVariables = Exact<{
+  input: CreateBrokerConnectionInput;
+}>;
+
+
+export type CreateBrokerConnectionMutation = { __typename?: 'Mutation', createBrokerConnection: { __typename?: 'BrokerConnection', id: string } };
+
+export type UpdateBrokerConnectionMutationVariables = Exact<{
+  input: UpdateBrokerConnectionInput;
+}>;
+
+
+export type UpdateBrokerConnectionMutation = { __typename?: 'Mutation', updateBrokerConnection: { __typename?: 'BrokerConnection', id: string } };
+
+export type DeleteBrokerConnectionMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type DeleteBrokerConnectionMutation = { __typename?: 'Mutation', deleteBrokerConnection: boolean };
+
+export type VerifyBrokerConnectionMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type VerifyBrokerConnectionMutation = { __typename?: 'Mutation', verifyBrokerConnection: { __typename?: 'BrokerConnection', id: string, status: BrokerConnectionStatus, lastError?: string | null } };
+
+export type SyncBrokerConnectionMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type SyncBrokerConnectionMutation = { __typename?: 'Mutation', syncBrokerConnection: { __typename?: 'BrokerSyncReport', connectionId: string, fetched: number, inserted: number, duplicates: number, errors: Array<string>, warnings: Array<string>, partial: boolean } };
+
+export type SyncAllBrokerConnectionsMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type SyncAllBrokerConnectionsMutation = { __typename?: 'Mutation', syncAllBrokerConnections: Array<{ __typename?: 'BrokerSyncReport', connectionId: string, fetched: number, inserted: number, duplicates: number, errors: Array<string>, warnings: Array<string>, partial: boolean }> };
+
 export type ProductsQueryVariables = Exact<{
   search?: InputMaybe<Scalars['String']['input']>;
   includeInactive?: InputMaybe<Scalars['Boolean']['input']>;
@@ -1468,6 +2534,35 @@ export const UpdateCategoryDocument = {"kind":"Document","definitions":[{"kind":
 export const RemoveCategoryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveCategory"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeCategory"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<RemoveCategoryMutation, RemoveCategoryMutationVariables>;
 export const ArticleInflationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ArticleInflation"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ArticleInflationFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"articleInflation"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"latestMonthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"latestAnnualRate"}},{"kind":"Field","name":{"kind":"Name","value":"averageMonthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"points"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"annualRate"}},{"kind":"Field","name":{"kind":"Name","value":"basketSize"}}]}},{"kind":"Field","name":{"kind":"Name","value":"articles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"articleId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"latestMonthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"latestAnnualRate"}},{"kind":"Field","name":{"kind":"Name","value":"points"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"}},{"kind":"Field","name":{"kind":"Name","value":"avgUnitPrice"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"annualRate"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"categories"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"categoryName"}},{"kind":"Field","name":{"kind":"Name","value":"latestMonthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"latestAnnualRate"}},{"kind":"Field","name":{"kind":"Name","value":"points"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"annualRate"}}]}}]}}]}}]}}]} as unknown as DocumentNode<ArticleInflationQuery, ArticleInflationQueryVariables>;
 export const ExpenseInflationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExpenseInflation"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"InflationFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"expenseInflation"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"latestMonthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"latestAnnualRate"}},{"kind":"Field","name":{"kind":"Name","value":"averageMonthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"points"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"}},{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyRate"}},{"kind":"Field","name":{"kind":"Name","value":"annualRate"}}]}}]}}]}}]} as unknown as DocumentNode<ExpenseInflationQuery, ExpenseInflationQueryVariables>;
+export const InvestmentOverviewDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"InvestmentOverview"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"portfolioSummary"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"asOf"}},{"kind":"Field","name":{"kind":"Name","value":"baseCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"marketValue"}},{"kind":"Field","name":{"kind":"Name","value":"investedCapital"}},{"kind":"Field","name":{"kind":"Name","value":"costBasis"}},{"kind":"Field","name":{"kind":"Name","value":"cash"}},{"kind":"Field","name":{"kind":"Name","value":"unrealizedPnl"}},{"kind":"Field","name":{"kind":"Name","value":"realizedPnl"}},{"kind":"Field","name":{"kind":"Name","value":"simpleReturn"}},{"kind":"Field","name":{"kind":"Name","value":"dividends"}},{"kind":"Field","name":{"kind":"Name","value":"interest"}},{"kind":"Field","name":{"kind":"Name","value":"fees"}},{"kind":"Field","name":{"kind":"Name","value":"taxes"}},{"kind":"Field","name":{"kind":"Name","value":"positionsCount"}},{"kind":"Field","name":{"kind":"Name","value":"missingPriceCount"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedBasisPositionsCount"}},{"kind":"Field","name":{"kind":"Name","value":"pricesAsOf"}},{"kind":"Field","name":{"kind":"Name","value":"pricesStale"}}]}},{"kind":"Field","name":{"kind":"Name","value":"portfolioEvolution"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"baseCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedDays"}},{"kind":"Field","name":{"kind":"Name","value":"isStale"}},{"kind":"Field","name":{"kind":"Name","value":"points"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"totalValue"}},{"kind":"Field","name":{"kind":"Name","value":"marketValue"}},{"kind":"Field","name":{"kind":"Name","value":"cash"}},{"kind":"Field","name":{"kind":"Name","value":"contributions"}},{"kind":"Field","name":{"kind":"Name","value":"netFlow"}},{"kind":"Field","name":{"kind":"Name","value":"unrealizedPnl"}},{"kind":"Field","name":{"kind":"Name","value":"realizedPnl"}},{"kind":"Field","name":{"kind":"Name","value":"dividends"}},{"kind":"Field","name":{"kind":"Name","value":"twrIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isEstimated"}},{"kind":"Field","name":{"kind":"Name","value":"missingPriceCount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"investmentPositions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"averageCost"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisBase"}},{"kind":"Field","name":{"kind":"Name","value":"marketValueBase"}},{"kind":"Field","name":{"kind":"Name","value":"unrealizedPnlBase"}},{"kind":"Field","name":{"kind":"Name","value":"unrealizedReturn"}},{"kind":"Field","name":{"kind":"Name","value":"realizedPnlToDateBase"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisIsEstimated"}},{"kind":"Field","name":{"kind":"Name","value":"priceMissing"}},{"kind":"Field","name":{"kind":"Name","value":"lastPrice"}},{"kind":"Field","name":{"kind":"Name","value":"lastPriceOn"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"account"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"broker"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}}]}},{"kind":"Field","name":{"kind":"Name","value":"instrument"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"assetClass"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"sector"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"lastPrice"}},{"kind":"Field","name":{"kind":"Name","value":"lastPriceOn"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"pendingCorporateActions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"instrumentId"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"instrumentName"}},{"kind":"Field","name":{"kind":"Name","value":"exDate"}},{"kind":"Field","name":{"kind":"Name","value":"amountPerShare"}},{"kind":"Field","name":{"kind":"Name","value":"quantityHeld"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedAmount"}},{"kind":"Field","name":{"kind":"Name","value":"ratioNumerator"}},{"kind":"Field","name":{"kind":"Name","value":"ratioDenominator"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"accountIds"}}]}}]}}]} as unknown as DocumentNode<InvestmentOverviewQuery, InvestmentOverviewQueryVariables>;
+export const InvestmentReturnsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"InvestmentReturns"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"from"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"to"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"portfolioReturns"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"from"},"value":{"kind":"Variable","name":{"kind":"Name","value":"from"}}},{"kind":"Argument","name":{"kind":"Name","value":"to"},"value":{"kind":"Variable","name":{"kind":"Name","value":"to"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"from"}},{"kind":"Field","name":{"kind":"Name","value":"to"}},{"kind":"Field","name":{"kind":"Name","value":"baseCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"investedCapital"}},{"kind":"Field","name":{"kind":"Name","value":"endingValue"}},{"kind":"Field","name":{"kind":"Name","value":"simpleReturn"}},{"kind":"Field","name":{"kind":"Name","value":"twr"}},{"kind":"Field","name":{"kind":"Name","value":"twrAnnualized"}},{"kind":"Field","name":{"kind":"Name","value":"twrAnnualizedStatus"}},{"kind":"Field","name":{"kind":"Name","value":"xirr"}},{"kind":"Field","name":{"kind":"Name","value":"xirrStatus"}},{"kind":"Field","name":{"kind":"Name","value":"unrealizedPnl"}},{"kind":"Field","name":{"kind":"Name","value":"realizedPnl"}},{"kind":"Field","name":{"kind":"Name","value":"dividends"}},{"kind":"Field","name":{"kind":"Name","value":"isStale"}}]}}]}}]} as unknown as DocumentNode<InvestmentReturnsQuery, InvestmentReturnsQueryVariables>;
+export const InvestmentAllocationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"InvestmentAllocation"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"dimension"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AllocationDimension"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"portfolioAllocation"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"dimension"},"value":{"kind":"Variable","name":{"kind":"Name","value":"dimension"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"asOf"}},{"kind":"Field","name":{"kind":"Name","value":"baseCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"missingPriceCount"}},{"kind":"Field","name":{"kind":"Name","value":"slices"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"marketValue"}},{"kind":"Field","name":{"kind":"Name","value":"costBasis"}},{"kind":"Field","name":{"kind":"Name","value":"percentage"}},{"kind":"Field","name":{"kind":"Name","value":"positionsCount"}}]}}]}}]}}]} as unknown as DocumentNode<InvestmentAllocationQuery, InvestmentAllocationQueryVariables>;
+export const InvestmentBenchmarksDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"InvestmentBenchmarks"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"benchmarks"}},"type":{"kind":"NonNullType","type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"BenchmarkKey"}}}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"from"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"to"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"benchmarkComparison"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"benchmarks"},"value":{"kind":"Variable","name":{"kind":"Name","value":"benchmarks"}}},{"kind":"Argument","name":{"kind":"Name","value":"from"},"value":{"kind":"Variable","name":{"kind":"Name","value":"from"}}},{"kind":"Argument","name":{"kind":"Name","value":"to"},"value":{"kind":"Variable","name":{"kind":"Name","value":"to"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"baseCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"from"}},{"kind":"Field","name":{"kind":"Name","value":"to"}},{"kind":"Field","name":{"kind":"Name","value":"inBaseCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"warnings"}},{"kind":"Field","name":{"kind":"Name","value":"series"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"totalReturn"}},{"kind":"Field","name":{"kind":"Name","value":"annualized"}},{"kind":"Field","name":{"kind":"Name","value":"annualizedStatus"}},{"kind":"Field","name":{"kind":"Name","value":"excessReturn"}},{"kind":"Field","name":{"kind":"Name","value":"basis"}},{"kind":"Field","name":{"kind":"Name","value":"points"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"index"}}]}}]}}]}}]}}]} as unknown as DocumentNode<InvestmentBenchmarksQuery, InvestmentBenchmarksQueryVariables>;
+export const InvestmentAccountsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"InvestmentAccounts"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"includeInactive"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"investmentAccounts"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"includeInactive"},"value":{"kind":"Variable","name":{"kind":"Name","value":"includeInactive"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"broker"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"isActive"}},{"kind":"Field","name":{"kind":"Name","value":"connectionId"}},{"kind":"Field","name":{"kind":"Name","value":"externalAccountId"}},{"kind":"Field","name":{"kind":"Name","value":"linkedPaymentMethodId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"investmentCashBalances"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}}]} as unknown as DocumentNode<InvestmentAccountsQuery, InvestmentAccountsQueryVariables>;
+export const InvestmentTransactionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"InvestmentTransactions"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"InvestmentTransactionsFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"investmentTransactions"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"accountId"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"instrumentId"}},{"kind":"Field","name":{"kind":"Name","value":"occurredOn"}},{"kind":"Field","name":{"kind":"Name","value":"occurredAt"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"fee"}},{"kind":"Field","name":{"kind":"Name","value":"tax"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"fxRate"}},{"kind":"Field","name":{"kind":"Name","value":"fxRateSource"}},{"kind":"Field","name":{"kind":"Name","value":"settlementCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"settlementAmount"}},{"kind":"Field","name":{"kind":"Name","value":"splitRatioNumerator"}},{"kind":"Field","name":{"kind":"Name","value":"splitRatioDenominator"}},{"kind":"Field","name":{"kind":"Name","value":"counterpartyAccountId"}},{"kind":"Field","name":{"kind":"Name","value":"externalId"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"occurrenceIndex"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"account"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"instrument"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"assetClass"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"investmentTransactionsCount"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}]}]}}]} as unknown as DocumentNode<InvestmentTransactionsQuery, InvestmentTransactionsQueryVariables>;
+export const InvestmentInstrumentSearchDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"InvestmentInstrumentSearch"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"query"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"instrumentSearch"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"query"},"value":{"kind":"Variable","name":{"kind":"Name","value":"query"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"exchange"}},{"kind":"Field","name":{"kind":"Name","value":"assetClass"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"sector"}},{"kind":"Field","name":{"kind":"Name","value":"industry"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"isin"}},{"kind":"Field","name":{"kind":"Name","value":"twelveDataSymbol"}},{"kind":"Field","name":{"kind":"Name","value":"priceSource"}},{"kind":"Field","name":{"kind":"Name","value":"lastPrice"}},{"kind":"Field","name":{"kind":"Name","value":"lastPriceOn"}}]}}]}}]} as unknown as DocumentNode<InvestmentInstrumentSearchQuery, InvestmentInstrumentSearchQueryVariables>;
+export const BrokerConnectionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"BrokerConnections"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"brokerConnections"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"broker"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"isDemo"}},{"kind":"Field","name":{"kind":"Name","value":"autoSync"}},{"kind":"Field","name":{"kind":"Name","value":"hasCredentials"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"lastError"}},{"kind":"Field","name":{"kind":"Name","value":"lastSyncedAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<BrokerConnectionsQuery, BrokerConnectionsQueryVariables>;
+export const CreateInvestmentAccountDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateInvestmentAccount"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateInvestmentAccountInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createInvestmentAccount"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<CreateInvestmentAccountMutation, CreateInvestmentAccountMutationVariables>;
+export const UpdateInvestmentAccountDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateInvestmentAccount"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateInvestmentAccountInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateInvestmentAccount"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<UpdateInvestmentAccountMutation, UpdateInvestmentAccountMutationVariables>;
+export const DeleteInvestmentAccountDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteInvestmentAccount"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteInvestmentAccount"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DeleteInvestmentAccountMutation, DeleteInvestmentAccountMutationVariables>;
+export const RebuildInvestmentPositionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RebuildInvestmentPositions"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"accountId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"rebuildInvestmentPositions"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"accountId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"accountId"}}}]}]}}]} as unknown as DocumentNode<RebuildInvestmentPositionsMutation, RebuildInvestmentPositionsMutationVariables>;
+export const CreateInvestmentTransactionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateInvestmentTransaction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateInvestmentTransactionInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createInvestmentTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<CreateInvestmentTransactionMutation, CreateInvestmentTransactionMutationVariables>;
+export const UpdateInvestmentTransactionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateInvestmentTransaction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateInvestmentTransactionInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateInvestmentTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<UpdateInvestmentTransactionMutation, UpdateInvestmentTransactionMutationVariables>;
+export const DeleteInvestmentTransactionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteInvestmentTransaction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteInvestmentTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DeleteInvestmentTransactionMutation, DeleteInvestmentTransactionMutationVariables>;
+export const ResolveInvestmentFxRatesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ResolveInvestmentFxRates"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"resolveInvestmentFxRates"}}]}}]} as unknown as DocumentNode<ResolveInvestmentFxRatesMutation, ResolveInvestmentFxRatesMutationVariables>;
+export const RefreshInvestmentPricesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RefreshInvestmentPrices"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"refreshInvestmentPrices"}}]}}]} as unknown as DocumentNode<RefreshInvestmentPricesMutation, RefreshInvestmentPricesMutationVariables>;
+export const RebuildPortfolioSnapshotsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RebuildPortfolioSnapshots"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"rebuildPortfolioSnapshots"}}]}}]} as unknown as DocumentNode<RebuildPortfolioSnapshotsMutation, RebuildPortfolioSnapshotsMutationVariables>;
+export const RefreshCorporateActionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RefreshCorporateActions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"refreshCorporateActions"}}]}}]} as unknown as DocumentNode<RefreshCorporateActionsMutation, RefreshCorporateActionsMutationVariables>;
+export const ApplyCorporateActionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ApplyCorporateAction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"actionId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"accountId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"applyCorporateAction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"actionId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"actionId"}}},{"kind":"Argument","name":{"kind":"Name","value":"accountId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"accountId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<ApplyCorporateActionMutation, ApplyCorporateActionMutationVariables>;
+export const CreateInstrumentDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateInstrument"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateInstrumentInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createInstrument"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<CreateInstrumentMutation, CreateInstrumentMutationVariables>;
+export const UpdateInstrumentDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateInstrument"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateInstrumentInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateInstrument"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<UpdateInstrumentMutation, UpdateInstrumentMutationVariables>;
+export const SetInstrumentPriceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetInstrumentPrice"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"SetInstrumentPriceInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setInstrumentPrice"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"lastPrice"}},{"kind":"Field","name":{"kind":"Name","value":"lastPriceOn"}}]}}]}}]} as unknown as DocumentNode<SetInstrumentPriceMutation, SetInstrumentPriceMutationVariables>;
+export const CreateBrokerConnectionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateBrokerConnection"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateBrokerConnectionInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createBrokerConnection"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<CreateBrokerConnectionMutation, CreateBrokerConnectionMutationVariables>;
+export const UpdateBrokerConnectionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateBrokerConnection"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateBrokerConnectionInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateBrokerConnection"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<UpdateBrokerConnectionMutation, UpdateBrokerConnectionMutationVariables>;
+export const DeleteBrokerConnectionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteBrokerConnection"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteBrokerConnection"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DeleteBrokerConnectionMutation, DeleteBrokerConnectionMutationVariables>;
+export const VerifyBrokerConnectionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"VerifyBrokerConnection"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"verifyBrokerConnection"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"lastError"}}]}}]}}]} as unknown as DocumentNode<VerifyBrokerConnectionMutation, VerifyBrokerConnectionMutationVariables>;
+export const SyncBrokerConnectionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SyncBrokerConnection"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"syncBrokerConnection"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"connectionId"}},{"kind":"Field","name":{"kind":"Name","value":"fetched"}},{"kind":"Field","name":{"kind":"Name","value":"inserted"}},{"kind":"Field","name":{"kind":"Name","value":"duplicates"}},{"kind":"Field","name":{"kind":"Name","value":"errors"}},{"kind":"Field","name":{"kind":"Name","value":"warnings"}},{"kind":"Field","name":{"kind":"Name","value":"partial"}}]}}]}}]} as unknown as DocumentNode<SyncBrokerConnectionMutation, SyncBrokerConnectionMutationVariables>;
+export const SyncAllBrokerConnectionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SyncAllBrokerConnections"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"syncAllBrokerConnections"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"connectionId"}},{"kind":"Field","name":{"kind":"Name","value":"fetched"}},{"kind":"Field","name":{"kind":"Name","value":"inserted"}},{"kind":"Field","name":{"kind":"Name","value":"duplicates"}},{"kind":"Field","name":{"kind":"Name","value":"errors"}},{"kind":"Field","name":{"kind":"Name","value":"warnings"}},{"kind":"Field","name":{"kind":"Name","value":"partial"}}]}}]}}]} as unknown as DocumentNode<SyncAllBrokerConnectionsMutation, SyncAllBrokerConnectionsMutationVariables>;
 export const ProductsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Products"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"includeInactive"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"products"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"includeInactive"},"value":{"kind":"Variable","name":{"kind":"Name","value":"includeInactive"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"brand"}},{"kind":"Field","name":{"kind":"Name","value":"packageSize"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"barcode"}},{"kind":"Field","name":{"kind":"Name","value":"isConsumable"}},{"kind":"Field","name":{"kind":"Name","value":"isActive"}},{"kind":"Field","name":{"kind":"Name","value":"inStock"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}}]}}]}}]} as unknown as DocumentNode<ProductsQuery, ProductsQueryVariables>;
 export const ProductStatsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ProductStats"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"productStats"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"articleId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"closedCycles"}},{"kind":"Field","name":{"kind":"Name","value":"avgDaysLasted"}},{"kind":"Field","name":{"kind":"Name","value":"minDaysLasted"}},{"kind":"Field","name":{"kind":"Name","value":"maxDaysLasted"}},{"kind":"Field","name":{"kind":"Name","value":"avgUnitPrice"}},{"kind":"Field","name":{"kind":"Name","value":"lastPurchasedOn"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedDepletionDate"}}]}}]}}]} as unknown as DocumentNode<ProductStatsQuery, ProductStatsQueryVariables>;
 export const ProductPurchasesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ProductPurchases"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"articleId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"productPurchases"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"articleId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"articleId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"purchasedOn"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"}},{"kind":"Field","name":{"kind":"Name","value":"store"}},{"kind":"Field","name":{"kind":"Name","value":"expenseId"}},{"kind":"Field","name":{"kind":"Name","value":"article"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<ProductPurchasesQuery, ProductPurchasesQueryVariables>;

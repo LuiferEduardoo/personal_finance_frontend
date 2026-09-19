@@ -61,6 +61,70 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ]
 
+/** Destinos propios del espacio de inversiones. */
+export const INVESTMENT_NAV_ITEMS: NavItem[] = [
+  {
+    to: '/inversiones',
+    label: 'Resumen',
+    icon: (
+      <svg {...iconProps}>
+        <path d="M4 19V9m5 10V5m5 14v-7m5 7V3" />
+      </svg>
+    ),
+  },
+  {
+    to: '/inversiones/operaciones',
+    label: 'Operaciones',
+    icon: (
+      <svg {...iconProps}>
+        <path d="M4 7h16M4 7l3-3M4 7l3 3" />
+        <path d="M20 17H4m16 0-3-3m3 3-3 3" />
+      </svg>
+    ),
+  },
+  {
+    to: '/inversiones/cuentas',
+    label: 'Cuentas',
+    icon: (
+      <svg {...iconProps}>
+        <rect x="3" y="5" width="18" height="15" rx="2" />
+        <path d="M7 9h10M7 14h6" />
+      </svg>
+    ),
+  },
+  {
+    to: '/inversiones/importar',
+    label: 'Importar',
+    icon: (
+      <svg {...iconProps}>
+        <path d="M12 3v12m0 0 4-4m-4 4-4-4" />
+        <path d="M4 19h16" />
+      </svg>
+    ),
+  },
+  {
+    to: '/inversiones/mercado',
+    label: 'Mercado',
+    icon: (
+      <svg {...iconProps}>
+        <circle cx="12" cy="12" r="9" />
+        <path d="m7 14 3-3 2 2 5-5" />
+      </svg>
+    ),
+  },
+  {
+    to: '/inversiones/conexiones',
+    label: 'Conexiones',
+    icon: (
+      <svg {...iconProps}>
+        <path d="M8.5 15.5 6 18a3 3 0 0 1-4-4l4-4a3 3 0 0 1 4 0" />
+        <path d="m15.5 8.5 2.5-2.5a3 3 0 0 1 4 4l-4 4a3 3 0 0 1-4 0" />
+        <path d="m9 15 6-6" />
+      </svg>
+    ),
+  },
+]
+
 /** Tareas de organización menos frecuentes, agrupadas en el sidebar. */
 export const ORGANIZATION_ITEMS: NavItem[] = [
   {
