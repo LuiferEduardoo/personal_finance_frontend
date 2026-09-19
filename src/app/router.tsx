@@ -5,6 +5,7 @@ import { createBrowserRouter, Navigate } from 'react-router'
 import { PagePlaceholder } from '@/components/PagePlaceholder'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
+import { PasswordRecoveryPage } from '@/features/auth/PasswordRecoveryPage'
 import { AppLayout } from './AppLayout'
 import { GuestRoute, ProtectedRoute } from './ProtectedRoute'
 
@@ -123,6 +124,8 @@ export const router = createBrowserRouter([
     children: [
       { path: '/entrar', element: <LoginPage /> },
       { path: '/registro', element: <RegisterPage /> },
+      { path: '/recuperar-contrasena', element: <PasswordRecoveryPage /> },
+      { path: '/restaurar-contrasena', element: <PasswordRecoveryPage /> },
     ],
   },
   {

@@ -35,7 +35,13 @@ type Documents = {
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      accessToken\n      refreshToken\n      user {\n        id\n        email\n        firstName\n      }\n    }\n  }\n": typeof types.LoginDocument,
     "\n  mutation Register($input: RegisterInput!) {\n    register(input: $input) {\n      accessToken\n      refreshToken\n      user {\n        id\n        email\n        firstName\n      }\n    }\n  }\n": typeof types.RegisterDocument,
     "\n  mutation Logout($refreshToken: String!) {\n    logout(refreshToken: $refreshToken)\n  }\n": typeof types.LogoutDocument,
-    "\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      timezone\n    }\n  }\n": typeof types.MeDocument,
+    "\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      timezone\n      authentication {\n        twoFactorMethod\n      }\n    }\n  }\n": typeof types.MeDocument,
+    "\n  mutation RequestPasswordReset($email: String!) {\n    requestPasswordReset(email: $email)\n  }\n": typeof types.RequestPasswordResetDocument,
+    "\n  mutation ResetPassword($input: ResetPasswordInput!) {\n    resetPassword(input: $input)\n  }\n": typeof types.ResetPasswordDocument,
+    "\n  mutation ChangePassword($input: ChangePasswordInput!) {\n    changePassword(input: $input)\n  }\n": typeof types.ChangePasswordDocument,
+    "\n  mutation BeginTwoFactor($method: TwoFactorMethod!) {\n    beginTwoFactorSetup(method: $method) {\n      method\n      secret\n      otpauthUri\n    }\n  }\n": typeof types.BeginTwoFactorDocument,
+    "\n  mutation ConfirmTwoFactor($method: TwoFactorMethod!, $code: String!) {\n    confirmTwoFactorSetup(method: $method, code: $code)\n  }\n": typeof types.ConfirmTwoFactorDocument,
+    "\n  mutation DisableTwoFactor($code: String!) {\n    disableTwoFactor(code: $code)\n  }\n": typeof types.DisableTwoFactorDocument,
     "\n  query Categories($kind: TransactionKind) {\n    categories(kind: $kind) {\n      id\n      name\n      icon\n      color\n      kind\n      parentId\n      userId\n      isActive\n    }\n  }\n": typeof types.CategoriesDocument,
     "\n  mutation CreateCategory($input: CreateCategoryInput!) {\n    createCategory(input: $input) {\n      id\n      name\n      icon\n      color\n      kind\n      parentId\n      userId\n      isActive\n    }\n  }\n": typeof types.CreateCategoryDocument,
     "\n  mutation UpdateCategory($input: UpdateCategoryInput!) {\n    updateCategory(input: $input) {\n      id\n      name\n      icon\n      color\n      isActive\n    }\n  }\n": typeof types.UpdateCategoryDocument,
@@ -119,7 +125,13 @@ const documents: Documents = {
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      accessToken\n      refreshToken\n      user {\n        id\n        email\n        firstName\n      }\n    }\n  }\n": types.LoginDocument,
     "\n  mutation Register($input: RegisterInput!) {\n    register(input: $input) {\n      accessToken\n      refreshToken\n      user {\n        id\n        email\n        firstName\n      }\n    }\n  }\n": types.RegisterDocument,
     "\n  mutation Logout($refreshToken: String!) {\n    logout(refreshToken: $refreshToken)\n  }\n": types.LogoutDocument,
-    "\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      timezone\n    }\n  }\n": types.MeDocument,
+    "\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      timezone\n      authentication {\n        twoFactorMethod\n      }\n    }\n  }\n": types.MeDocument,
+    "\n  mutation RequestPasswordReset($email: String!) {\n    requestPasswordReset(email: $email)\n  }\n": types.RequestPasswordResetDocument,
+    "\n  mutation ResetPassword($input: ResetPasswordInput!) {\n    resetPassword(input: $input)\n  }\n": types.ResetPasswordDocument,
+    "\n  mutation ChangePassword($input: ChangePasswordInput!) {\n    changePassword(input: $input)\n  }\n": types.ChangePasswordDocument,
+    "\n  mutation BeginTwoFactor($method: TwoFactorMethod!) {\n    beginTwoFactorSetup(method: $method) {\n      method\n      secret\n      otpauthUri\n    }\n  }\n": types.BeginTwoFactorDocument,
+    "\n  mutation ConfirmTwoFactor($method: TwoFactorMethod!, $code: String!) {\n    confirmTwoFactorSetup(method: $method, code: $code)\n  }\n": types.ConfirmTwoFactorDocument,
+    "\n  mutation DisableTwoFactor($code: String!) {\n    disableTwoFactor(code: $code)\n  }\n": types.DisableTwoFactorDocument,
     "\n  query Categories($kind: TransactionKind) {\n    categories(kind: $kind) {\n      id\n      name\n      icon\n      color\n      kind\n      parentId\n      userId\n      isActive\n    }\n  }\n": types.CategoriesDocument,
     "\n  mutation CreateCategory($input: CreateCategoryInput!) {\n    createCategory(input: $input) {\n      id\n      name\n      icon\n      color\n      kind\n      parentId\n      userId\n      isActive\n    }\n  }\n": types.CreateCategoryDocument,
     "\n  mutation UpdateCategory($input: UpdateCategoryInput!) {\n    updateCategory(input: $input) {\n      id\n      name\n      icon\n      color\n      isActive\n    }\n  }\n": types.UpdateCategoryDocument,
@@ -283,7 +295,31 @@ export function graphql(source: "\n  mutation Logout($refreshToken: String!) {\n
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      timezone\n    }\n  }\n"): (typeof documents)["\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      timezone\n    }\n  }\n"];
+export function graphql(source: "\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      timezone\n      authentication {\n        twoFactorMethod\n      }\n    }\n  }\n"): (typeof documents)["\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      timezone\n      authentication {\n        twoFactorMethod\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RequestPasswordReset($email: String!) {\n    requestPasswordReset(email: $email)\n  }\n"): (typeof documents)["\n  mutation RequestPasswordReset($email: String!) {\n    requestPasswordReset(email: $email)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation ResetPassword($input: ResetPasswordInput!) {\n    resetPassword(input: $input)\n  }\n"): (typeof documents)["\n  mutation ResetPassword($input: ResetPasswordInput!) {\n    resetPassword(input: $input)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation ChangePassword($input: ChangePasswordInput!) {\n    changePassword(input: $input)\n  }\n"): (typeof documents)["\n  mutation ChangePassword($input: ChangePasswordInput!) {\n    changePassword(input: $input)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation BeginTwoFactor($method: TwoFactorMethod!) {\n    beginTwoFactorSetup(method: $method) {\n      method\n      secret\n      otpauthUri\n    }\n  }\n"): (typeof documents)["\n  mutation BeginTwoFactor($method: TwoFactorMethod!) {\n    beginTwoFactorSetup(method: $method) {\n      method\n      secret\n      otpauthUri\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation ConfirmTwoFactor($method: TwoFactorMethod!, $code: String!) {\n    confirmTwoFactorSetup(method: $method, code: $code)\n  }\n"): (typeof documents)["\n  mutation ConfirmTwoFactor($method: TwoFactorMethod!, $code: String!) {\n    confirmTwoFactorSetup(method: $method, code: $code)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DisableTwoFactor($code: String!) {\n    disableTwoFactor(code: $code)\n  }\n"): (typeof documents)["\n  mutation DisableTwoFactor($code: String!) {\n    disableTwoFactor(code: $code)\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

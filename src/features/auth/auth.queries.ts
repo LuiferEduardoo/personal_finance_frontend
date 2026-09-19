@@ -45,6 +45,44 @@ export const MeQuery = graphql(`
       avatar
       baseCurrency
       timezone
+      authentication {
+        twoFactorMethod
+      }
     }
+  }
+`)
+
+export const RequestPasswordResetMutation = graphql(`
+  mutation RequestPasswordReset($email: String!) {
+    requestPasswordReset(email: $email)
+  }
+`)
+export const ResetPasswordMutation = graphql(`
+  mutation ResetPassword($input: ResetPasswordInput!) {
+    resetPassword(input: $input)
+  }
+`)
+export const ChangePasswordMutation = graphql(`
+  mutation ChangePassword($input: ChangePasswordInput!) {
+    changePassword(input: $input)
+  }
+`)
+export const BeginTwoFactorMutation = graphql(`
+  mutation BeginTwoFactor($method: TwoFactorMethod!) {
+    beginTwoFactorSetup(method: $method) {
+      method
+      secret
+      otpauthUri
+    }
+  }
+`)
+export const ConfirmTwoFactorMutation = graphql(`
+  mutation ConfirmTwoFactor($method: TwoFactorMethod!, $code: String!) {
+    confirmTwoFactorSetup(method: $method, code: $code)
+  }
+`)
+export const DisableTwoFactorMutation = graphql(`
+  mutation DisableTwoFactor($code: String!) {
+    disableTwoFactor(code: $code)
   }
 `)
