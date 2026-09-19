@@ -1,4 +1,4 @@
-import { useQuery } from '@apollo/client'
+import { useMutation, useQuery } from '@apollo/client'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/Button'
 import { EmptyState } from '@/components/states'
@@ -15,10 +15,16 @@ import {
 } from './investments.api'
 import {
   editImportRow,
+  assignInstrument,
+  importableAfterInstrumentCreation,
+  missingInstruments,
   summarizeRows,
   type EditableRowField,
 } from './investment-import'
-import { InvestmentAccountsQuery } from './investments.queries'
+import {
+  CreateInstrumentMutation,
+  InvestmentAccountsQuery,
+} from './investments.queries'
 
 export function InvestmentImportPage() {
   const accounts = useQuery(InvestmentAccountsQuery, {
@@ -30,6 +36,7 @@ export function InvestmentImportPage() {
   const [batches, setBatches] = useState<ImportBatch[]>([])
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [createInstrument] = useMutation(CreateInstrumentMutation)
   useEffect(() => {
     if (!accountId && accounts.data?.investmentAccounts[0])
       setAccountId(accounts.data.investmentAccounts[0].id)
@@ -84,10 +91,40 @@ export function InvestmentImportPage() {
   const commit = async () => {
     if (!draft || !accountId) return
     setBusy(true)
+    setMessage(null)
     try {
-      const result = await commitInvestmentImport(draft.batchId, accountId, draft.rows)
+      const accountCurrency =
+        accounts.data?.investmentAccounts.find((account) => account.id === accountId)
+          ?.currency ?? 'USD'
+      const instruments = missingInstruments(draft.rows, accountCurrency)
+      let rows = draft.rows
+
+      for (const instrument of instruments) {
+        const created = await createInstrument({
+          variables: {
+            input: {
+              symbol: instrument.symbol,
+              name: instrument.symbol,
+              currency: instrument.currency,
+              assetClass: 'EQUITY',
+            },
+          },
+        })
+        const instrumentId = created.data?.createInstrument.id
+        if (!instrumentId)
+          throw new Error(`No se pudo crear el activo ${instrument.symbol}.`)
+        rows = assignInstrument(rows, instrument.symbol, instrumentId)
+        setDraft((current) =>
+          current ? { ...current, rows, stats: summarizeRows(rows) } : current,
+        )
+      }
+
+      const result = await commitInvestmentImport(draft.batchId, accountId, rows)
+      const assetsMessage = instruments.length
+        ? ` y ${instruments.length} activos creados automáticamente`
+        : ''
       setMessage(
-        `${result.inserted} operaciones importadas; ${result.skippedDuplicates} duplicadas y ${result.skippedErrors} con errores omitidas.`,
+        `${result.inserted} operaciones importadas${assetsMessage}; ${result.skippedDuplicates} duplicadas y ${result.skippedErrors} con errores omitidas.`,
       )
       setDraft(null)
       setBatches(await getInvestmentImportBatches())
@@ -115,7 +152,8 @@ export function InvestmentImportPage() {
         <p className="text-ink-muted text-sm">CSV, XLSX o PDF</p>
         <h1 className="text-ink text-2xl font-semibold">Importar operaciones</h1>
         <p className="text-ink-secondary mt-1 text-sm">
-          Analiza primero el archivo. Nada se guarda hasta que confirmes el borrador.
+          Analiza primero el archivo. Al confirmar, los activos que no existan se
+          crearán automáticamente junto con sus operaciones.
         </p>
       </div>
       {message && (
@@ -178,10 +216,10 @@ export function InvestmentImportPage() {
                 Descartar
               </Button>
               <Button
-                disabled={busy || draft.stats.importable === 0}
+                disabled={busy || importableAfterInstrumentCreation(draft.rows) === 0}
                 onClick={() => void commit()}
               >
-                Importar {draft.stats.importable}
+                Importar {importableAfterInstrumentCreation(draft.rows)}
               </Button>
             </div>
           </div>

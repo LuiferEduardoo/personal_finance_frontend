@@ -3,6 +3,11 @@ import type { ImportDraft, ImportRow } from './investments.api'
 export type EditableRowField =
   'occurredOn' | 'type' | 'quantity' | 'price' | 'amount' | 'fee' | 'currency'
 
+export type MissingInstrument = {
+  symbol: string
+  currency: string
+}
+
 const INSTRUMENT_REQUIRED_TYPES = new Set([
   'buy',
   'sell',
@@ -75,4 +80,53 @@ export function summarizeRows(rows: ImportRow[]): ImportDraft['stats'] {
     withErrors: rows.filter((row) => row.errors.length > 0).length,
     needingInstrument: rows.filter((row) => row.needsInstrument).length,
   }
+}
+
+export function missingInstruments(
+  rows: ImportRow[],
+  fallbackCurrency: string,
+): MissingInstrument[] {
+  const bySymbol = new Map<string, MissingInstrument>()
+
+  for (const row of rows) {
+    const symbol = row.symbol?.trim().toUpperCase()
+    if (
+      !row.needsInstrument ||
+      row.isDuplicate ||
+      row.errors.length > 0 ||
+      !symbol ||
+      bySymbol.has(symbol)
+    )
+      continue
+
+    bySymbol.set(symbol, {
+      symbol,
+      currency: row.currency?.trim().toUpperCase() || fallbackCurrency.toUpperCase(),
+    })
+  }
+
+  return [...bySymbol.values()]
+}
+
+export function importableAfterInstrumentCreation(rows: ImportRow[]): number {
+  return rows.filter(
+    (row) =>
+      !row.isDuplicate &&
+      row.errors.length === 0 &&
+      (!row.needsInstrument || Boolean(row.symbol?.trim())),
+  ).length
+}
+
+export function assignInstrument(
+  rows: ImportRow[],
+  symbol: string,
+  instrumentId: string,
+): ImportRow[] {
+  const normalizedSymbol = symbol.trim().toUpperCase()
+
+  return rows.map((row) =>
+    row.needsInstrument && row.symbol?.trim().toUpperCase() === normalizedSymbol
+      ? { ...row, instrumentId, needsInstrument: false }
+      : row,
+  )
 }

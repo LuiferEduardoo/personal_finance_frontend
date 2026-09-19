@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { ImportRow } from './investments.api'
-import { editImportRow, summarizeRows } from './investment-import'
+import {
+  assignInstrument,
+  editImportRow,
+  importableAfterInstrumentCreation,
+  missingInstruments,
+  summarizeRows,
+} from './investment-import'
 
 const invalidRow: ImportRow = {
   rowNumber: 1,
@@ -35,5 +41,71 @@ describe('edición del borrador de importación', () => {
     const row = editImportRow(invalidRow, 'currency', 'US')
     expect(row.errors).toContain('Moneda no reconocida: "US"')
     expect(summarizeRows([row]).withErrors).toBe(1)
+  })
+
+  it('agrupa los activos faltantes por símbolo y completa su moneda', () => {
+    const missing = {
+      ...invalidRow,
+      instrumentId: null,
+      needsInstrument: true,
+      currency: null,
+      errors: [],
+    }
+
+    expect(
+      missingInstruments(
+        [missing, { ...missing, rowNumber: 2, symbol: ' meli ', currency: 'usd' }],
+        'COP',
+      ),
+    ).toEqual([{ symbol: 'MELI', currency: 'COP' }])
+  })
+
+  it('asigna el activo creado a todas sus operaciones', () => {
+    const missing = {
+      ...invalidRow,
+      instrumentId: null,
+      needsInstrument: true,
+      errors: [],
+    }
+    const rows = assignInstrument(
+      [missing, { ...missing, rowNumber: 2, symbol: 'meli' }],
+      'MELI',
+      'new-instrument',
+    )
+
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          instrumentId: 'new-instrument',
+          needsInstrument: false,
+        }),
+        expect.objectContaining({
+          instrumentId: 'new-instrument',
+          needsInstrument: false,
+        }),
+      ]),
+    )
+    expect(summarizeRows(rows).needingInstrument).toBe(0)
+    expect(importableAfterInstrumentCreation(rows)).toBe(2)
+  })
+
+  it('no intenta crear activos para filas inválidas o duplicadas', () => {
+    const missing = {
+      ...invalidRow,
+      instrumentId: null,
+      needsInstrument: true,
+      errors: [],
+    }
+
+    expect(
+      missingInstruments(
+        [
+          { ...missing, errors: ['Fecha inválida'] },
+          { ...missing, rowNumber: 2, isDuplicate: true },
+        ],
+        'USD',
+      ),
+    ).toEqual([])
+    expect(importableAfterInstrumentCreation([{ ...missing, symbol: null }])).toBe(0)
   })
 })
