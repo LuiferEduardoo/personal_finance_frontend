@@ -14,12 +14,16 @@ export type PeriodSummary = {
  * Todo pasa por `exchangeRate`: sumar `amount` a secas mezclaría pesos con
  * dólares y daría un total sin sentido.
  */
-export function summarize(transactions: Transaction[]): PeriodSummary {
+export function summarize(
+  transactions: Transaction[],
+  conversionFactor = 1,
+): PeriodSummary {
   let income = 0
   let expense = 0
 
   for (const transaction of transactions) {
-    const value = toBaseCurrency(transaction.amount, transaction.exchangeRate)
+    const value =
+      toBaseCurrency(transaction.amount, transaction.exchangeRate) * conversionFactor
     if (transaction.kind === 'INCOME') income += value
     else expense += value
   }
@@ -39,7 +43,10 @@ export type CategoryTotal = {
  * Solo gastos: mezclar ingresos aquí daría un ranking donde la nómina aplasta
  * todo lo demás y el desglose deja de informar.
  */
-export function totalsByCategory(transactions: Transaction[]): CategoryTotal[] {
+export function totalsByCategory(
+  transactions: Transaction[],
+  conversionFactor = 1,
+): CategoryTotal[] {
   const totals = new Map<string, CategoryTotal>()
 
   for (const transaction of transactions) {
@@ -49,7 +56,8 @@ export function totalsByCategory(transactions: Transaction[]): CategoryTotal[] {
     // muchos, es justo lo que el usuario necesita ver.
     const key = transaction.categoryId ?? '__sin_categoria__'
     const existing = totals.get(key)
-    const value = toBaseCurrency(transaction.amount, transaction.exchangeRate)
+    const value =
+      toBaseCurrency(transaction.amount, transaction.exchangeRate) * conversionFactor
 
     if (existing) {
       existing.total += value
@@ -78,13 +86,17 @@ export type MonthlyPoint = {
  * "ese mes no gastaste nada", que no es lo mismo que "no hay datos de ese mes".
  * Es la misma regla que aplica el backend en la serie de inflación.
  */
-export function monthlySeries(transactions: Transaction[]): MonthlyPoint[] {
+export function monthlySeries(
+  transactions: Transaction[],
+  conversionFactor = 1,
+): MonthlyPoint[] {
   const months = new Map<string, MonthlyPoint>()
 
   for (const transaction of transactions) {
     const period = transaction.occurredOn.slice(0, 7)
     const point = months.get(period) ?? { period, income: 0, expense: 0 }
-    const value = toBaseCurrency(transaction.amount, transaction.exchangeRate)
+    const value =
+      toBaseCurrency(transaction.amount, transaction.exchangeRate) * conversionFactor
 
     if (transaction.kind === 'INCOME') point.income += value
     else point.expense += value

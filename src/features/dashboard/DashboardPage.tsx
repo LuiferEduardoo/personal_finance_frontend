@@ -7,6 +7,7 @@ import { directionOf } from '@/features/transactions/types'
 import { useTransactions } from '@/features/transactions/useTransactions'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import { endOfMonth, formatDate, subtractMonths, todayIso } from '@/lib/dates'
+import { toBaseCurrency } from '@/lib/money'
 import { CategoryBreakdown } from './CategoryBreakdown'
 import { MonthlyChart } from './MonthlyChart'
 import { StatTile } from './StatTile'
@@ -18,9 +19,24 @@ const RANGES = [
   { months: 11, label: '12 meses' },
 ] as const
 
+type DashboardCurrency = 'COP' | 'USD'
+
+const USD_COP_RATE_KEY = 'kairos.dashboard.usd-cop-rate'
+
+function savedUsdCopRate(): number | null {
+  const value = Number(globalThis.localStorage?.getItem(USD_COP_RATE_KEY))
+  return Number.isFinite(value) && value > 0 ? value : null
+}
+
 export function DashboardPage() {
   const { user } = useSession()
   const [months, setMonths] = useState<number>(5)
+  const [currency, setCurrency] = useState<DashboardCurrency>(() =>
+    user?.baseCurrency === 'USD' ? 'USD' : 'COP',
+  )
+  const [customUsdCopRate, setCustomUsdCopRate] = useState<number | null>(
+    savedUsdCopRate,
+  )
 
   const today = todayIso()
   const range = useMemo(
@@ -30,14 +46,33 @@ export function DashboardPage() {
 
   const { transactions, loading, error } = useTransactions('ALL', range)
 
-  const summary = useMemo(() => summarize(transactions), [transactions])
-  const monthly = useMemo(() => monthlySeries(transactions), [transactions])
-  const byCategory = useMemo(() => totalsByCategory(transactions), [transactions])
-  const recent = useMemo(() => transactions.slice(0, 5), [transactions])
+  const inferredUsdCopRate = useMemo(() => {
+    const usdMovement = transactions.find(
+      (transaction) => transaction.currency === 'USD' && transaction.exchangeRate > 0,
+    )
+    return usdMovement?.exchangeRate ?? null
+  }, [transactions])
+  const usdCopRate = customUsdCopRate ?? inferredUsdCopRate
+  const baseCurrency = user?.baseCurrency === 'USD' ? 'USD' : 'COP'
+  const conversionFactor = useMemo(() => {
+    if (currency === baseCurrency) return 1
+    if (!usdCopRate) return 1
+    return baseCurrency === 'COP' ? 1 / usdCopRate : usdCopRate
+  }, [baseCurrency, currency, usdCopRate])
 
-  // La moneda base del usuario es la unidad de todos los totales, porque
-  // summarize() ya convirtió cada importe con su exchangeRate.
-  const currency = user?.baseCurrency ?? 'COP'
+  const summary = useMemo(
+    () => summarize(transactions, conversionFactor),
+    [conversionFactor, transactions],
+  )
+  const monthly = useMemo(
+    () => monthlySeries(transactions, conversionFactor),
+    [conversionFactor, transactions],
+  )
+  const byCategory = useMemo(
+    () => totalsByCategory(transactions, conversionFactor),
+    [conversionFactor, transactions],
+  )
+  const recent = useMemo(() => transactions.slice(0, 5), [transactions])
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
@@ -46,28 +81,75 @@ export function DashboardPage() {
           Hola{user?.firstName ? `, ${user.firstName}` : ''}
         </h1>
 
-        <div
-          role="group"
-          aria-label="Periodo"
-          className="border-border bg-surface-sunken flex gap-1 rounded-lg border p-1"
-        >
-          {RANGES.map((option) => (
-            <button
-              key={option.months}
-              type="button"
-              aria-pressed={months === option.months}
-              onClick={() => setMonths(option.months)}
-              className={`min-h-10 rounded-md px-3 text-sm font-medium ${
-                months === option.months
-                  ? 'bg-surface-raised text-ink shadow-sm'
-                  : 'text-ink-secondary'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div
+            role="group"
+            aria-label="Moneda del dashboard"
+            className="border-border bg-surface-sunken flex gap-1 rounded-lg border p-1"
+          >
+            {(['COP', 'USD'] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={currency === option}
+                onClick={() => setCurrency(option)}
+                className={`min-h-10 rounded-md px-3 text-sm font-medium ${
+                  currency === option
+                    ? 'bg-surface-raised text-ink shadow-sm'
+                    : 'text-ink-secondary'
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+
+          <div
+            role="group"
+            aria-label="Periodo"
+            className="border-border bg-surface-sunken flex gap-1 rounded-lg border p-1"
+          >
+            {RANGES.map((option) => (
+              <button
+                key={option.months}
+                type="button"
+                aria-pressed={months === option.months}
+                onClick={() => setMonths(option.months)}
+                className={`min-h-10 rounded-md px-3 text-sm font-medium ${
+                  months === option.months
+                    ? 'bg-surface-raised text-ink shadow-sm'
+                    : 'text-ink-secondary'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+
+      {currency !== baseCurrency && (
+        <label className="text-ink-muted mt-3 flex flex-wrap items-center justify-end gap-2 text-xs">
+          1 USD =
+          <input
+            type="number"
+            min="0.000001"
+            step="0.01"
+            aria-label="Tasa de cambio de dólar a peso colombiano"
+            value={usdCopRate ?? ''}
+            placeholder="Tasa USD/COP"
+            onChange={(event) => {
+              const rate = Number(event.target.value)
+              const nextRate = Number.isFinite(rate) && rate > 0 ? rate : null
+              setCustomUsdCopRate(nextRate)
+              if (nextRate) localStorage.setItem(USD_COP_RATE_KEY, String(nextRate))
+              else localStorage.removeItem(USD_COP_RATE_KEY)
+            }}
+            className="border-border bg-surface-raised text-ink h-9 w-28 rounded-md border px-2 text-right text-sm"
+          />
+          COP
+        </label>
+      )}
 
       {loading ? (
         <div className="mt-6">
@@ -76,6 +158,13 @@ export function DashboardPage() {
       ) : error ? (
         <div className="mt-6">
           <ErrorState message={getFirstErrorMessage(error)} />
+        </div>
+      ) : currency !== baseCurrency && !usdCopRate ? (
+        <div className="mt-6">
+          <EmptyState
+            title="Agrega la tasa USD/COP"
+            description="Necesitamos la tasa de cambio para convertir los valores sin alterar tus datos."
+          />
         </div>
       ) : transactions.length === 0 ? (
         <div className="mt-6">
@@ -158,8 +247,11 @@ export function DashboardPage() {
                     </p>
                   </div>
                   <Money
-                    amount={transaction.amount}
-                    currency={transaction.currency}
+                    amount={
+                      toBaseCurrency(transaction.amount, transaction.exchangeRate) *
+                      conversionFactor
+                    }
+                    currency={currency}
                     direction={directionOf(transaction.kind)}
                     size="sm"
                   />

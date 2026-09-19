@@ -50,6 +50,16 @@ describe('summarize', () => {
     expect(result.expense).toBe(400_000)
   })
 
+  it('convierte los totales desde la moneda base a la moneda elegida', () => {
+    const result = summarize(
+      [transaction({ kind: 'INCOME', amount: 4_000_000 })],
+      1 / 4_000,
+    )
+
+    expect(result.income).toBe(1_000)
+    expect(result.balance).toBe(1_000)
+  })
+
   it('da balance negativo cuando se gasta de más', () => {
     const result = summarize([
       transaction({ kind: 'INCOME', amount: 100 }),
