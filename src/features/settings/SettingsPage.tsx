@@ -1,4 +1,5 @@
 import { useMutation } from '@apollo/client'
+import QRCode from 'qrcode'
 import { useState } from 'react'
 import { Button } from '@/components/Button'
 import { Field } from '@/components/Field'
@@ -20,6 +21,8 @@ export function SettingsPage() {
   const [method, setMethod] = useState<TwoFactorMethod>('TOTP')
   const [code, setCode] = useState('')
   const [secret, setSecret] = useState<string | null>(null)
+  const [otpauthUri, setOtpauthUri] = useState<string | null>(null)
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null)
   const [showDisableForm, setShowDisableForm] = useState(false)
   const [showChangeForm, setShowChangeForm] = useState(false)
   const [setupStarted, setSetupStarted] = useState(false)
@@ -131,6 +134,8 @@ export function SettingsPage() {
                     setMethod(activeMethod === 'TOTP' ? 'EMAIL' : 'TOTP')
                     setCode('')
                     setSecret(null)
+                    setOtpauthUri(null)
+                    setQrCodeUrl(null)
                     setSetupStarted(false)
                     setShowChangeForm(true)
                   }}
@@ -167,6 +172,8 @@ export function SettingsPage() {
                 onChange={(e) => {
                   setMethod(e.target.value as TwoFactorMethod)
                   setSecret(null)
+                  setOtpauthUri(null)
+                  setQrCodeUrl(null)
                   setCode('')
                   setSetupStarted(false)
                 }}
@@ -186,7 +193,19 @@ export function SettingsPage() {
                 void run(
                   async () => {
                     const result = await begin({ variables: { method } })
-                    setSecret(result.data?.beginTwoFactorSetup.secret ?? null)
+                    const setup = result.data?.beginTwoFactorSetup
+                    const uri = setup?.otpauthUri ?? null
+                    setSecret(setup?.secret ?? null)
+                    setOtpauthUri(uri)
+                    setQrCodeUrl(
+                      uri
+                        ? await QRCode.toDataURL(uri, {
+                            width: 224,
+                            margin: 2,
+                            errorCorrectionLevel: 'M',
+                          })
+                        : null,
+                    )
                     setSetupStarted(true)
                   },
                   method === 'EMAIL'
@@ -203,6 +222,8 @@ export function SettingsPage() {
                 onClick={() => {
                   setShowChangeForm(false)
                   setSecret(null)
+                  setOtpauthUri(null)
+                  setQrCodeUrl(null)
                   setCode('')
                   setSetupStarted(false)
                 }}
@@ -213,11 +234,35 @@ export function SettingsPage() {
           </div>
         )}
         {secret && (
-          <div className="bg-surface-sunken mt-4 rounded-lg p-3">
-            <p className="text-ink-muted text-xs">
-              Secreto TOTP — solo se muestra ahora
-            </p>
-            <code className="text-ink mt-1 block text-sm break-all">{secret}</code>
+          <div className="border-border bg-surface-sunken mt-4 grid gap-4 rounded-lg border p-4 sm:grid-cols-[auto_1fr] sm:items-center">
+            {qrCodeUrl && (
+              <div className="border-border w-fit rounded-lg border bg-white p-2">
+                <img
+                  src={qrCodeUrl}
+                  alt="Código QR para configurar Kairos en una aplicación autenticadora"
+                  className="size-52"
+                />
+              </div>
+            )}
+            <div className="min-w-0">
+              <h3 className="text-ink text-sm font-medium">Escanea el código QR</h3>
+              <p className="text-ink-secondary mt-1 text-xs">
+                Usa Google Authenticator, Microsoft Authenticator, 1Password u otra
+                aplicación compatible con TOTP.
+              </p>
+              {otpauthUri && (
+                <a
+                  href={otpauthUri}
+                  className="text-ink mt-3 inline-block text-sm font-medium underline"
+                >
+                  Abrir aplicación autenticadora
+                </a>
+              )}
+              <p className="text-ink-muted mt-4 text-xs">
+                Si no puedes escanearlo, introduce este secreto manualmente:
+              </p>
+              <code className="text-ink mt-1 block text-sm break-all">{secret}</code>
+            </div>
           </div>
         )}
         {((!activeMethod || showChangeForm) && setupStarted) ||
@@ -271,6 +316,8 @@ export function SettingsPage() {
                       })
                       setShowChangeForm(false)
                       setSecret(null)
+                      setOtpauthUri(null)
+                      setQrCodeUrl(null)
                       setCode('')
                       setSetupStarted(false)
                     },
