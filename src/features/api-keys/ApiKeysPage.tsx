@@ -128,7 +128,7 @@ export function ApiKeysPage() {
         ) : keys.length === 0 ? (
           <EmptyState
             title="Sin API keys"
-            description="Crea una clave cuando quieras conectar Kuantico con otra aplicación."
+            description="Crea una clave cuando quieras conectar Kairos con otra aplicación."
             action={<Button onClick={() => setIsCreating(true)}>Crear API key</Button>}
           />
         ) : (

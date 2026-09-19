@@ -142,10 +142,18 @@ function SidebarNav() {
         isCollapsed ? 'w-20' : 'w-60'
       }`}
     >
-      <div className="flex min-h-20 items-center justify-between gap-2 px-3">
-        <p className="text-ink flex min-w-0 items-center gap-2 text-lg font-semibold">
+      <div
+        className={`flex min-h-20 items-center gap-2 ${
+          isCollapsed ? 'justify-center px-0' : 'justify-between px-3'
+        }`}
+      >
+        <p
+          className={`text-ink flex min-w-0 items-center gap-2 text-lg font-semibold ${
+            isCollapsed ? 'justify-center' : ''
+          }`}
+        >
           <img src="/logo.webp" alt="" className="size-10 shrink-0" />
-          {!isCollapsed && <span className="truncate">Kuantico</span>}
+          {!isCollapsed && <span className="truncate">Kairos</span>}
         </p>
         {!isCollapsed && (
           <button

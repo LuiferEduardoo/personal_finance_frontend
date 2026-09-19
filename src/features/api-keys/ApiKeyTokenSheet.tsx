@@ -27,7 +27,7 @@ export function ApiKeyTokenSheet({
         <div>
           <p className="text-ink text-sm font-medium">Guárdala ahora</p>
           <p className="text-ink-secondary mt-1 text-sm">
-            Este secreto se muestra una sola vez. Kuantico no podrá recuperarlo cuando
+            Este secreto se muestra una sola vez. Kairos no podrá recuperarlo cuando
             cierres esta ventana.
           </p>
         </div>

@@ -60,7 +60,7 @@ export function RegisterPage() {
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-12">
       <div className="mb-8 flex items-center gap-3">
         <img src="/logo.webp" alt="" className="size-14 shrink-0" />
-        <span className="text-ink text-2xl font-semibold">Kuantico</span>
+        <span className="text-ink text-2xl font-semibold">Kairos</span>
       </div>
       <h1 className="text-ink text-2xl font-semibold">Crear cuenta</h1>
       <p className="text-ink-secondary mt-1 text-sm">
