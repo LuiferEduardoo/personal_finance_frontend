@@ -13,6 +13,8 @@ const session: SessionValue = {
     lastName: 'Torres',
     avatar: null,
     baseCurrency: 'COP',
+    financeBaseCurrency: 'COP',
+    investmentBaseCurrency: 'USD',
     timezone: 'America/Bogota',
   },
   isLoading: false,

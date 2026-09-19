@@ -1,6 +1,6 @@
 import { useMutation } from '@apollo/client'
 import QRCode from 'qrcode'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/Button'
 import { Field } from '@/components/Field'
 import { useSession } from '@/features/auth/SessionContext'
@@ -10,6 +10,7 @@ import {
   ConfirmTwoFactorMutation,
   DisableTwoFactorMutation,
   MeQuery,
+  UpdateBaseCurrenciesMutation,
 } from '@/features/auth/auth.queries'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import type { TwoFactorMethod } from '@/graphql/generated/graphql'
@@ -27,11 +28,26 @@ export function SettingsPage() {
   const [showChangeForm, setShowChangeForm] = useState(false)
   const [setupStarted, setSetupStarted] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [financeCurrency, setFinanceCurrency] = useState(
+    user?.financeBaseCurrency ?? 'COP',
+  )
+  const [investmentCurrency, setInvestmentCurrency] = useState(
+    user?.investmentBaseCurrency ?? 'USD',
+  )
   const [changePassword, changing] = useMutation(ChangePasswordMutation)
   const [begin, beginning] = useMutation(BeginTwoFactorMutation)
   const [confirm, confirming] = useMutation(ConfirmTwoFactorMutation)
   const [disable, disabling] = useMutation(DisableTwoFactorMutation)
+  const [updateCurrencies, updatingCurrencies] = useMutation(
+    UpdateBaseCurrenciesMutation,
+  )
   const activeMethod = user?.authentication?.twoFactorMethod
+
+  useEffect(() => {
+    if (!user) return
+    setFinanceCurrency(user.financeBaseCurrency)
+    setInvestmentCurrency(user.investmentBaseCurrency)
+  }, [user])
 
   const run = async (action: () => Promise<unknown>, success: string) => {
     try {
@@ -53,9 +69,60 @@ export function SettingsPage() {
             value={[user.firstName, user.lastName].filter(Boolean).join(' ')}
           />
           <Row label="Correo" value={user.email} />
-          <Row label="Moneda base" value={user.baseCurrency} />
           <Row label="Zona horaria" value={user.timezone} />
         </dl>
+      )}
+
+      {user && (
+        <section className="border-border bg-surface-raised mt-6 rounded-lg border p-4">
+          <h2 className="text-ink font-semibold">Monedas base</h2>
+          <p className="text-ink-secondary mt-1 text-sm">
+            Cada área convierte sus totales de forma independiente.
+          </p>
+          <form
+            className="mt-4 grid gap-4 sm:grid-cols-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void run(
+                () =>
+                  updateCurrencies({
+                    variables: {
+                      financeBaseCurrency: financeCurrency,
+                      investmentBaseCurrency: investmentCurrency,
+                    },
+                    refetchQueries: [{ query: MeQuery }],
+                    awaitRefetchQueries: true,
+                  }),
+                'Monedas base actualizadas.',
+              )
+            }}
+          >
+            <CurrencySelect
+              label="Gastos e ingresos"
+              hint="Dashboard, cuentas, artículos e inflación."
+              value={financeCurrency}
+              onChange={setFinanceCurrency}
+            />
+            <CurrencySelect
+              label="Inversiones"
+              hint="Cartera, rentabilidad, efectivo y comparativas."
+              value={investmentCurrency}
+              onChange={setInvestmentCurrency}
+            />
+            <div className="sm:col-span-2">
+              <Button
+                type="submit"
+                isLoading={updatingCurrencies.loading}
+                disabled={
+                  financeCurrency === user.financeBaseCurrency &&
+                  investmentCurrency === user.investmentBaseCurrency
+                }
+              >
+                Guardar monedas
+              </Button>
+            </div>
+          </form>
+        </section>
       )}
 
       <section className="border-border bg-surface-raised mt-6 rounded-lg border p-4">
@@ -339,6 +406,38 @@ export function SettingsPage() {
         </p>
       )}
     </div>
+  )
+}
+
+const CURRENCIES = ['COP', 'USD'] as const
+
+function CurrencySelect({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string
+  hint: string
+  value: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <label className="text-sm">
+      <span className="text-ink-secondary mb-1 block font-medium">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="border-border bg-surface min-h-11 w-full rounded-lg border px-3"
+      >
+        {CURRENCIES.map((currency) => (
+          <option key={currency} value={currency}>
+            {currency}
+          </option>
+        ))}
+      </select>
+      <span className="text-ink-muted mt-1 block text-xs">{hint}</span>
+    </label>
   )
 }
 

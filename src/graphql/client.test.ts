@@ -101,6 +101,8 @@ describe('errorLink', () => {
                 lastName: null,
                 avatar: null,
                 baseCurrency: 'COP',
+                financeBaseCurrency: 'COP',
+                investmentBaseCurrency: 'USD',
                 timezone: 'America/Bogota',
               },
             },

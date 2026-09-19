@@ -3,6 +3,9 @@ import { useState } from 'react'
 import { Button } from '@/components/Button'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { getFirstErrorMessage } from '@/graphql/errors'
+import { useSession } from '@/features/auth/SessionContext'
+import { LatestTrmQuery } from '@/features/settings/trm.queries'
+import { trmFactor } from '@/lib/trm'
 import type { AllocationDimension } from '@/graphql/generated/graphql'
 import { AllocationDonut } from './AllocationDonut'
 import {
@@ -34,9 +37,11 @@ const DIMENSIONS: [AllocationDimension, string][] = [
 ]
 
 export function InvestmentOverviewPage() {
+  const { user } = useSession()
   const [dimension, setDimension] = useState<AllocationDimension>('ASSET_CLASS')
   const [dateRange, setDateRange] = useState<DateRange>('1A')
   const { data, loading, error, refetch } = useQuery(InvestmentOverviewQuery)
+  const trm = useQuery(LatestTrmQuery)
   const allocation = useQuery(InvestmentAllocationQuery, {
     variables: { dimension },
   })
@@ -80,6 +85,12 @@ export function InvestmentOverviewPage() {
       </Page>
     )
   const { portfolioSummary: summary } = data
+  const displayCurrency = user?.investmentBaseCurrency ?? summary.baseCurrency
+  const factor = trm.data
+    ? trmFactor(summary.baseCurrency, displayCurrency, trm.data.latestTrm.value)
+    : 1
+  const money = (value: number | null | undefined) =>
+    compactMoney(value == null ? value : value * factor, displayCurrency)
   const returns =
     periodReturns.data?.portfolioReturns ?? periodReturns.previousData?.portfolioReturns
   const evolutionPoints = filterPointsByRange(
@@ -140,24 +151,15 @@ export function InvestmentOverviewPage() {
       >
         <Metric
           label="Valor actual"
-          value={compactMoney(
-            returns?.endingValue ?? lastPoint?.totalValue,
-            summary.baseCurrency,
-          )}
+          value={money(returns?.endingValue ?? lastPoint?.totalValue)}
         />
         <Metric
           label="Capital aportado"
-          value={compactMoney(
-            returns?.investedCapital ?? lastPoint?.contributions,
-            summary.baseCurrency,
-          )}
+          value={money(returns?.investedCapital ?? lastPoint?.contributions)}
         />
         <Metric
           label="Ganancia no realizada"
-          value={compactMoney(
-            returns?.unrealizedPnl ?? lastPoint?.unrealizedPnl,
-            summary.baseCurrency,
-          )}
+          value={money(returns?.unrealizedPnl ?? lastPoint?.unrealizedPnl)}
           tone={returns?.unrealizedPnl ?? lastPoint?.unrealizedPnl}
         />
         <Metric
@@ -173,15 +175,9 @@ export function InvestmentOverviewPage() {
         />
         <Metric
           label="Dividendos"
-          value={compactMoney(
-            returns?.dividends ?? lastPoint?.dividends,
-            summary.baseCurrency,
-          )}
+          value={money(returns?.dividends ?? lastPoint?.dividends)}
         />
-        <Metric
-          label="Efectivo"
-          value={compactMoney(lastPoint?.cash, summary.baseCurrency)}
-        />
+        <Metric label="Efectivo" value={money(lastPoint?.cash)} />
       </div>
 
       <section className="border-border bg-surface-raised mt-5 rounded-xl border p-4">

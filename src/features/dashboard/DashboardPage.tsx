@@ -1,3 +1,4 @@
+import { useQuery } from '@apollo/client'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Money } from '@/components/Money'
@@ -8,6 +9,7 @@ import { useTransactions } from '@/features/transactions/useTransactions'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import { endOfMonth, formatDate, subtractMonths, todayIso } from '@/lib/dates'
 import { toBaseCurrency } from '@/lib/money'
+import { LatestTrmQuery } from '@/features/settings/trm.queries'
 import { CategoryBreakdown } from './CategoryBreakdown'
 import { MonthlyChart } from './MonthlyChart'
 import { StatTile } from './StatTile'
@@ -21,22 +23,13 @@ const RANGES = [
 
 type DashboardCurrency = 'COP' | 'USD'
 
-const USD_COP_RATE_KEY = 'kairos.dashboard.usd-cop-rate'
-
-function savedUsdCopRate(): number | null {
-  const value = Number(globalThis.localStorage?.getItem(USD_COP_RATE_KEY))
-  return Number.isFinite(value) && value > 0 ? value : null
-}
-
 export function DashboardPage() {
   const { user } = useSession()
   const [months, setMonths] = useState<number>(5)
   const [currency, setCurrency] = useState<DashboardCurrency>(() =>
-    user?.baseCurrency === 'USD' ? 'USD' : 'COP',
+    user?.financeBaseCurrency === 'USD' ? 'USD' : 'COP',
   )
-  const [customUsdCopRate, setCustomUsdCopRate] = useState<number | null>(
-    savedUsdCopRate,
-  )
+  const trm = useQuery(LatestTrmQuery)
 
   const today = todayIso()
   const range = useMemo(
@@ -46,13 +39,7 @@ export function DashboardPage() {
 
   const { transactions, loading, error } = useTransactions('ALL', range)
 
-  const inferredUsdCopRate = useMemo(() => {
-    const usdMovement = transactions.find(
-      (transaction) => transaction.currency === 'USD' && transaction.exchangeRate > 0,
-    )
-    return usdMovement?.exchangeRate ?? null
-  }, [transactions])
-  const usdCopRate = customUsdCopRate ?? inferredUsdCopRate
+  const usdCopRate = trm.data?.latestTrm.value ?? null
   const baseCurrency = user?.baseCurrency === 'USD' ? 'USD' : 'COP'
   const conversionFactor = useMemo(() => {
     if (currency === baseCurrency) return 1
@@ -128,27 +115,11 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {currency !== baseCurrency && (
-        <label className="text-ink-muted mt-3 flex flex-wrap items-center justify-end gap-2 text-xs">
-          1 USD =
-          <input
-            type="number"
-            min="0.000001"
-            step="0.01"
-            aria-label="Tasa de cambio de dólar a peso colombiano"
-            value={usdCopRate ?? ''}
-            placeholder="Tasa USD/COP"
-            onChange={(event) => {
-              const rate = Number(event.target.value)
-              const nextRate = Number.isFinite(rate) && rate > 0 ? rate : null
-              setCustomUsdCopRate(nextRate)
-              if (nextRate) localStorage.setItem(USD_COP_RATE_KEY, String(nextRate))
-              else localStorage.removeItem(USD_COP_RATE_KEY)
-            }}
-            className="border-border bg-surface-raised text-ink h-9 w-28 rounded-md border px-2 text-right text-sm"
-          />
-          COP
-        </label>
+      {currency !== baseCurrency && usdCopRate && (
+        <p className="text-ink-muted mt-3 text-right text-xs">
+          TRM oficial: 1 USD = {usdCopRate.toLocaleString('es-CO')} COP · vigencia{' '}
+          {trm.data?.latestTrm.validFrom}
+        </p>
       )}
 
       {loading ? (

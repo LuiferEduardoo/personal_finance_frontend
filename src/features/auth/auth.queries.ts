@@ -44,10 +44,29 @@ export const MeQuery = graphql(`
       lastName
       avatar
       baseCurrency
+      financeBaseCurrency
+      investmentBaseCurrency
       timezone
       authentication {
         twoFactorMethod
       }
+    }
+  }
+`)
+
+export const UpdateBaseCurrenciesMutation = graphql(`
+  mutation UpdateBaseCurrencies(
+    $financeBaseCurrency: String!
+    $investmentBaseCurrency: String!
+  ) {
+    updateBaseCurrencies(
+      financeBaseCurrency: $financeBaseCurrency
+      investmentBaseCurrency: $investmentBaseCurrency
+    ) {
+      id
+      baseCurrency
+      financeBaseCurrency
+      investmentBaseCurrency
     }
   }
 `)

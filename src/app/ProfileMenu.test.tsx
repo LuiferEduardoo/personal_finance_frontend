@@ -14,6 +14,8 @@ function renderMenu(logout = vi.fn()) {
       lastName: 'Torres',
       avatar: null,
       baseCurrency: 'COP',
+      financeBaseCurrency: 'COP',
+      investmentBaseCurrency: 'USD',
       timezone: 'America/Bogota',
     },
     isLoading: false,

@@ -35,7 +35,8 @@ type Documents = {
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      accessToken\n      refreshToken\n      user {\n        id\n        email\n        firstName\n      }\n    }\n  }\n": typeof types.LoginDocument,
     "\n  mutation Register($input: RegisterInput!) {\n    register(input: $input) {\n      accessToken\n      refreshToken\n      user {\n        id\n        email\n        firstName\n      }\n    }\n  }\n": typeof types.RegisterDocument,
     "\n  mutation Logout($refreshToken: String!) {\n    logout(refreshToken: $refreshToken)\n  }\n": typeof types.LogoutDocument,
-    "\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      timezone\n      authentication {\n        twoFactorMethod\n      }\n    }\n  }\n": typeof types.MeDocument,
+    "\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      financeBaseCurrency\n      investmentBaseCurrency\n      timezone\n      authentication {\n        twoFactorMethod\n      }\n    }\n  }\n": typeof types.MeDocument,
+    "\n  mutation UpdateBaseCurrencies(\n    $financeBaseCurrency: String!\n    $investmentBaseCurrency: String!\n  ) {\n    updateBaseCurrencies(\n      financeBaseCurrency: $financeBaseCurrency\n      investmentBaseCurrency: $investmentBaseCurrency\n    ) {\n      id\n      baseCurrency\n      financeBaseCurrency\n      investmentBaseCurrency\n    }\n  }\n": typeof types.UpdateBaseCurrenciesDocument,
     "\n  mutation RequestPasswordReset($email: String!) {\n    requestPasswordReset(email: $email)\n  }\n": typeof types.RequestPasswordResetDocument,
     "\n  mutation ResetPassword($input: ResetPasswordInput!) {\n    resetPassword(input: $input)\n  }\n": typeof types.ResetPasswordDocument,
     "\n  mutation ChangePassword($input: ChangePasswordInput!) {\n    changePassword(input: $input)\n  }\n": typeof types.ChangePasswordDocument,
@@ -91,6 +92,7 @@ type Documents = {
     "\n  mutation UpdateRecurringExpense($input: UpdateRecurringExpenseInput!) {\n    updateRecurringExpense(input: $input) {\n      ...RecurringFields\n    }\n  }\n": typeof types.UpdateRecurringExpenseDocument,
     "\n  mutation RemoveRecurringExpense($id: ID!) {\n    removeRecurringExpense(id: $id)\n  }\n": typeof types.RemoveRecurringExpenseDocument,
     "\n  mutation RunDueRecurringExpenses {\n    runDueRecurringExpenses\n  }\n": typeof types.RunDueRecurringExpensesDocument,
+    "\n  query LatestTrm {\n    latestTrm {\n      value\n      validFrom\n      validTo\n    }\n  }\n": typeof types.LatestTrmDocument,
     "\n  fragment ExpenseFields on Expense {\n    id\n    description\n    amount\n    currency\n    exchangeRate\n    occurredOn\n    merchant\n    notes\n    recurrence\n    accountId\n    account {\n      id\n      name\n    }\n    categoryId\n    category {\n      id\n      name\n      icon\n    }\n    items {\n      id\n      articleId\n      description\n      unitPrice\n      quantity\n      discount\n      subtotal\n      article {\n        id\n        name\n        type\n      }\n    }\n  }\n": typeof types.ExpenseFieldsFragmentDoc,
     "\n  fragment IncomeFields on Income {\n    id\n    description\n    amount\n    currency\n    exchangeRate\n    occurredOn\n    source\n    notes\n    recurrence\n    accountId\n    account {\n      id\n      name\n    }\n    categoryId\n    category {\n      id\n      name\n      icon\n    }\n  }\n": typeof types.IncomeFieldsFragmentDoc,
     "\n  query Expenses($filter: TransactionsFilterInput) {\n    expenses(filter: $filter) {\n      ...ExpenseFields\n    }\n  }\n": typeof types.ExpensesDocument,
@@ -125,7 +127,8 @@ const documents: Documents = {
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      accessToken\n      refreshToken\n      user {\n        id\n        email\n        firstName\n      }\n    }\n  }\n": types.LoginDocument,
     "\n  mutation Register($input: RegisterInput!) {\n    register(input: $input) {\n      accessToken\n      refreshToken\n      user {\n        id\n        email\n        firstName\n      }\n    }\n  }\n": types.RegisterDocument,
     "\n  mutation Logout($refreshToken: String!) {\n    logout(refreshToken: $refreshToken)\n  }\n": types.LogoutDocument,
-    "\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      timezone\n      authentication {\n        twoFactorMethod\n      }\n    }\n  }\n": types.MeDocument,
+    "\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      financeBaseCurrency\n      investmentBaseCurrency\n      timezone\n      authentication {\n        twoFactorMethod\n      }\n    }\n  }\n": types.MeDocument,
+    "\n  mutation UpdateBaseCurrencies(\n    $financeBaseCurrency: String!\n    $investmentBaseCurrency: String!\n  ) {\n    updateBaseCurrencies(\n      financeBaseCurrency: $financeBaseCurrency\n      investmentBaseCurrency: $investmentBaseCurrency\n    ) {\n      id\n      baseCurrency\n      financeBaseCurrency\n      investmentBaseCurrency\n    }\n  }\n": types.UpdateBaseCurrenciesDocument,
     "\n  mutation RequestPasswordReset($email: String!) {\n    requestPasswordReset(email: $email)\n  }\n": types.RequestPasswordResetDocument,
     "\n  mutation ResetPassword($input: ResetPasswordInput!) {\n    resetPassword(input: $input)\n  }\n": types.ResetPasswordDocument,
     "\n  mutation ChangePassword($input: ChangePasswordInput!) {\n    changePassword(input: $input)\n  }\n": types.ChangePasswordDocument,
@@ -181,6 +184,7 @@ const documents: Documents = {
     "\n  mutation UpdateRecurringExpense($input: UpdateRecurringExpenseInput!) {\n    updateRecurringExpense(input: $input) {\n      ...RecurringFields\n    }\n  }\n": types.UpdateRecurringExpenseDocument,
     "\n  mutation RemoveRecurringExpense($id: ID!) {\n    removeRecurringExpense(id: $id)\n  }\n": types.RemoveRecurringExpenseDocument,
     "\n  mutation RunDueRecurringExpenses {\n    runDueRecurringExpenses\n  }\n": types.RunDueRecurringExpensesDocument,
+    "\n  query LatestTrm {\n    latestTrm {\n      value\n      validFrom\n      validTo\n    }\n  }\n": types.LatestTrmDocument,
     "\n  fragment ExpenseFields on Expense {\n    id\n    description\n    amount\n    currency\n    exchangeRate\n    occurredOn\n    merchant\n    notes\n    recurrence\n    accountId\n    account {\n      id\n      name\n    }\n    categoryId\n    category {\n      id\n      name\n      icon\n    }\n    items {\n      id\n      articleId\n      description\n      unitPrice\n      quantity\n      discount\n      subtotal\n      article {\n        id\n        name\n        type\n      }\n    }\n  }\n": types.ExpenseFieldsFragmentDoc,
     "\n  fragment IncomeFields on Income {\n    id\n    description\n    amount\n    currency\n    exchangeRate\n    occurredOn\n    source\n    notes\n    recurrence\n    accountId\n    account {\n      id\n      name\n    }\n    categoryId\n    category {\n      id\n      name\n      icon\n    }\n  }\n": types.IncomeFieldsFragmentDoc,
     "\n  query Expenses($filter: TransactionsFilterInput) {\n    expenses(filter: $filter) {\n      ...ExpenseFields\n    }\n  }\n": types.ExpensesDocument,
@@ -295,7 +299,11 @@ export function graphql(source: "\n  mutation Logout($refreshToken: String!) {\n
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      timezone\n      authentication {\n        twoFactorMethod\n      }\n    }\n  }\n"): (typeof documents)["\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      timezone\n      authentication {\n        twoFactorMethod\n      }\n    }\n  }\n"];
+export function graphql(source: "\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      financeBaseCurrency\n      investmentBaseCurrency\n      timezone\n      authentication {\n        twoFactorMethod\n      }\n    }\n  }\n"): (typeof documents)["\n  query Me {\n    me {\n      id\n      email\n      firstName\n      lastName\n      avatar\n      baseCurrency\n      financeBaseCurrency\n      investmentBaseCurrency\n      timezone\n      authentication {\n        twoFactorMethod\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation UpdateBaseCurrencies(\n    $financeBaseCurrency: String!\n    $investmentBaseCurrency: String!\n  ) {\n    updateBaseCurrencies(\n      financeBaseCurrency: $financeBaseCurrency\n      investmentBaseCurrency: $investmentBaseCurrency\n    ) {\n      id\n      baseCurrency\n      financeBaseCurrency\n      investmentBaseCurrency\n    }\n  }\n"): (typeof documents)["\n  mutation UpdateBaseCurrencies(\n    $financeBaseCurrency: String!\n    $investmentBaseCurrency: String!\n  ) {\n    updateBaseCurrencies(\n      financeBaseCurrency: $financeBaseCurrency\n      investmentBaseCurrency: $investmentBaseCurrency\n    ) {\n      id\n      baseCurrency\n      financeBaseCurrency\n      investmentBaseCurrency\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -516,6 +524,10 @@ export function graphql(source: "\n  mutation RemoveRecurringExpense($id: ID!) {
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation RunDueRecurringExpenses {\n    runDueRecurringExpenses\n  }\n"): (typeof documents)["\n  mutation RunDueRecurringExpenses {\n    runDueRecurringExpenses\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query LatestTrm {\n    latestTrm {\n      value\n      validFrom\n      validTo\n    }\n  }\n"): (typeof documents)["\n  query LatestTrm {\n    latestTrm {\n      value\n      validFrom\n      validTo\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
