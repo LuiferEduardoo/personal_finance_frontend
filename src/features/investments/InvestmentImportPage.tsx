@@ -8,9 +8,16 @@ import {
   commitInvestmentImport,
   discardInvestmentImport,
   getInvestmentImportBatches,
+  remapInvestmentImport,
   type ImportBatch,
   type ImportDraft,
+  type ImportRow,
 } from './investments.api'
+import {
+  editImportRow,
+  summarizeRows,
+  type EditableRowField,
+} from './investment-import'
 import { InvestmentAccountsQuery } from './investments.queries'
 
 export function InvestmentImportPage() {
@@ -19,6 +26,7 @@ export function InvestmentImportPage() {
   })
   const [accountId, setAccountId] = useState('')
   const [draft, setDraft] = useState<ImportDraft | null>(null)
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({})
   const [batches, setBatches] = useState<ImportBatch[]>([])
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -36,12 +44,42 @@ export function InvestmentImportPage() {
     setBusy(true)
     setMessage(null)
     try {
-      setDraft(await analyzeInvestmentFile(file, accountId || undefined))
+      const analyzed = await analyzeInvestmentFile(file, accountId || undefined)
+      setDraft(analyzed)
+      setColumnMapping(analyzed.columnMapping)
     } catch (caught) {
       setMessage(getApiErrorMessage(caught))
     } finally {
       setBusy(false)
     }
+  }
+  const remap = async () => {
+    if (!draft) return
+    setBusy(true)
+    setMessage(null)
+    try {
+      const updated = await remapInvestmentImport(
+        draft.batchId,
+        Object.fromEntries(
+          Object.entries(columnMapping).filter(([, header]) => Boolean(header)),
+        ),
+        draft.detectedProfile,
+      )
+      setDraft(updated)
+      setColumnMapping(updated.columnMapping)
+      setMessage('Columnas reasignadas y filas validadas nuevamente.')
+    } catch (caught) {
+      setMessage(getApiErrorMessage(caught))
+    } finally {
+      setBusy(false)
+    }
+  }
+  const updateRow = (rowNumber: number, field: EditableRowField, value: string) => {
+    if (!draft) return
+    const rows = draft.rows.map((row) =>
+      row.rowNumber === rowNumber ? editImportRow(row, field, value) : row,
+    )
+    setDraft({ ...draft, rows, stats: summarizeRows(rows) })
   }
   const commit = async () => {
     if (!draft || !accountId) return
@@ -154,8 +192,54 @@ export function InvestmentImportPage() {
             <Stat label="Con errores" value={draft.stats.withErrors} />
             <Stat label="Sin activo" value={draft.stats.needingInstrument} />
           </div>
+          {draft.headers.length > 0 && (
+            <div className="border-border border-t p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-ink text-sm font-semibold">
+                    Asignación de columnas
+                  </h3>
+                  <p className="text-ink-muted mt-1 text-xs">
+                    Corrige qué columna del archivo corresponde a cada campo y vuelve a
+                    validar el borrador.
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  isLoading={busy}
+                  onClick={() => void remap()}
+                >
+                  Aplicar asignación
+                </Button>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {MAPPABLE_FIELDS.map((field) => (
+                  <label key={field.key} className="text-sm">
+                    <span className="text-ink-secondary mb-1 block">{field.label}</span>
+                    <select
+                      value={columnMapping[field.key] ?? ''}
+                      onChange={(event) =>
+                        setColumnMapping((current) => ({
+                          ...current,
+                          [field.key]: event.target.value,
+                        }))
+                      }
+                      className="border-border bg-surface min-h-11 w-full rounded-lg border px-3"
+                    >
+                      <option value="">No asignar</option>
+                      {draft.headers.map((header) => (
+                        <option key={header} value={header}>
+                          {header}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
+            <table className="w-full min-w-[1120px] text-left text-sm">
               <thead className="bg-surface-sunken text-ink-muted">
                 <tr>
                   <th className="p-3">Fila</th>
@@ -163,7 +247,10 @@ export function InvestmentImportPage() {
                   <th>Tipo</th>
                   <th>Activo</th>
                   <th className="text-right">Cantidad</th>
+                  <th className="text-right">Precio</th>
                   <th className="text-right">Importe</th>
+                  <th className="text-right">Comisión</th>
+                  <th>Moneda</th>
                   <th className="p-3">Estado</th>
                 </tr>
               </thead>
@@ -171,12 +258,58 @@ export function InvestmentImportPage() {
                 {draft.rows.slice(0, 100).map((row) => (
                   <tr key={row.rowNumber} className="border-border border-t">
                     <td className="p-3">{row.rowNumber}</td>
-                    <td>{row.occurredOn ?? '—'}</td>
-                    <td>{row.type ?? '—'}</td>
+                    <td>
+                      <input
+                        type="date"
+                        aria-label={`Fecha de la fila ${row.rowNumber}`}
+                        value={row.occurredOn ?? ''}
+                        onChange={(event) =>
+                          updateRow(row.rowNumber, 'occurredOn', event.target.value)
+                        }
+                        className="border-border bg-surface min-h-9 rounded-md border px-2"
+                      />
+                    </td>
+                    <td>
+                      <select
+                        aria-label={`Tipo de la fila ${row.rowNumber}`}
+                        value={row.type ?? ''}
+                        onChange={(event) =>
+                          updateRow(row.rowNumber, 'type', event.target.value)
+                        }
+                        className="border-border bg-surface min-h-9 rounded-md border px-2"
+                      >
+                        <option value="">Sin tipo</option>
+                        {TRANSACTION_TYPES.map((type) => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
                     <td>{row.symbol ?? '—'}</td>
-                    <td className="tabular text-right">{row.quantity ?? '—'}</td>
-                    <td className="tabular text-right">
-                      {row.amount ?? '—'} {row.currency}
+                    <td>
+                      <EditableNumber row={row} field="quantity" onChange={updateRow} />
+                    </td>
+                    <td>
+                      <EditableNumber row={row} field="price" onChange={updateRow} />
+                    </td>
+                    <td>
+                      <EditableNumber row={row} field="amount" onChange={updateRow} />
+                    </td>
+                    <td>
+                      <EditableNumber row={row} field="fee" onChange={updateRow} />
+                    </td>
+                    <td>
+                      <input
+                        aria-label={`Moneda de la fila ${row.rowNumber}`}
+                        value={row.currency ?? ''}
+                        maxLength={3}
+                        placeholder="USD"
+                        onChange={(event) =>
+                          updateRow(row.rowNumber, 'currency', event.target.value)
+                        }
+                        className="border-border bg-surface min-h-9 w-20 rounded-md border px-2 uppercase"
+                      />
                     </td>
                     <td className="p-3 text-xs">
                       {row.isDuplicate
@@ -234,5 +367,57 @@ function Stat({ label, value }: { label: string; value: number }) {
       <p className="text-ink-muted text-xs">{label}</p>
       <p className="tabular text-ink text-lg font-semibold">{value}</p>
     </div>
+  )
+}
+
+const MAPPABLE_FIELDS = [
+  { key: 'occurredOn', label: 'Fecha' },
+  { key: 'type', label: 'Tipo de operación' },
+  { key: 'symbol', label: 'Activo / símbolo' },
+  { key: 'isin', label: 'ISIN' },
+  { key: 'quantity', label: 'Cantidad' },
+  { key: 'price', label: 'Precio unitario' },
+  { key: 'amount', label: 'Importe bruto' },
+  { key: 'fee', label: 'Comisión' },
+  { key: 'tax', label: 'Impuesto' },
+  { key: 'currency', label: 'Moneda' },
+  { key: 'externalId', label: 'ID externo' },
+  { key: 'notes', label: 'Notas' },
+] as const
+
+const TRANSACTION_TYPES = [
+  { value: 'buy', label: 'Compra' },
+  { value: 'sell', label: 'Venta' },
+  { value: 'dividend', label: 'Dividendo' },
+  { value: 'interest', label: 'Interés' },
+  { value: 'deposit', label: 'Depósito' },
+  { value: 'withdrawal', label: 'Retiro' },
+  { value: 'fee', label: 'Comisión' },
+  { value: 'tax', label: 'Impuesto' },
+  { value: 'split', label: 'Split' },
+  { value: 'transfer_in', label: 'Transferencia entrante' },
+  { value: 'transfer_out', label: 'Transferencia saliente' },
+  { value: 'currency_exchange', label: 'Cambio de moneda' },
+] as const
+
+function EditableNumber({
+  row,
+  field,
+  onChange,
+}: {
+  row: ImportRow
+  field: 'quantity' | 'price' | 'amount' | 'fee'
+  onChange: (rowNumber: number, field: EditableRowField, value: string) => void
+}) {
+  return (
+    <input
+      type="number"
+      min="0"
+      step="any"
+      aria-label={`${MAPPABLE_FIELDS.find((item) => item.key === field)?.label} de la fila ${row.rowNumber}`}
+      value={row[field] ?? ''}
+      onChange={(event) => onChange(row.rowNumber, field, event.target.value)}
+      className="border-border bg-surface tabular min-h-9 w-28 rounded-md border px-2 text-right"
+    />
   )
 }

@@ -56,6 +56,15 @@ export const analyzeInvestmentFile = (file: File, accountId?: string) => {
   return apiFetch<ImportDraft>(`/investments/import/analyze${query}`, { form })
 }
 
+export const remapInvestmentImport = (
+  batchId: string,
+  columnMapping: Record<string, string>,
+  profileId?: string,
+) =>
+  apiFetch<ImportDraft>('/investments/import/remap', {
+    json: { batchId, columnMapping, profileId },
+  })
+
 export const commitInvestmentImport = (
   batchId: string,
   accountId: string,
