@@ -324,6 +324,7 @@ function TransactionForm({
           variables: {
             input: {
               id: transaction.id,
+              accountId,
               occurredOn: date,
               quantity: num(quantity),
               price: num(price),
@@ -372,7 +373,6 @@ function TransactionForm({
         <label className="text-sm">
           <span className="text-ink-secondary mb-1 block">Cuenta</span>
           <select
-            disabled={!!transaction}
             required
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}

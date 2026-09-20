@@ -1974,6 +1974,7 @@ export type UpdateInvestmentAccountInput = {
 };
 
 export type UpdateInvestmentTransactionInput = {
+  accountId?: InputMaybe<Scalars['ID']['input']>;
   amount?: InputMaybe<Scalars['Float']['input']>;
   fee?: InputMaybe<Scalars['Float']['input']>;
   fxRate?: InputMaybe<Scalars['Float']['input']>;
