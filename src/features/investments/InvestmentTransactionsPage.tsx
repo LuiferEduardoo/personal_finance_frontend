@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@apollo/client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { Button } from '@/components/Button'
 import { Field } from '@/components/Field'
@@ -8,15 +8,25 @@ import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import type {
+  BrokerKind,
   InvestmentTransactionType,
   InvestmentTransactionsQuery as TransactionsData,
 } from '@/graphql/generated/graphql'
 import {
+  BROKER_LABELS,
   compactMoney,
   INSTRUMENT_TYPES,
   TRANSACTION_LABELS,
   TRANSACTION_TYPES,
 } from './investment-ui'
+import {
+  brokersByAccount,
+  isRefining,
+  paginate,
+  PAGE_SIZE,
+  refineTransactions,
+  SERVER_WINDOW,
+} from './transaction-filters'
 import {
   CreateInvestmentTransactionMutation,
   DeleteInvestmentTransactionMutation,
@@ -29,34 +39,71 @@ import {
 
 type Transaction = TransactionsData['investmentTransactions'][number]
 
+const BROKERS = Object.entries(BROKER_LABELS) as [BrokerKind, string][]
+
+const brokerLabel = (broker: BrokerKind | undefined) =>
+  broker ? BROKER_LABELS[broker] : '—'
+
 export function InvestmentTransactionsPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const isNew = location.pathname.endsWith('/nueva')
   const [accountId, setAccountId] = useState('')
   const [type, setType] = useState<InvestmentTransactionType | ''>('')
+  const [broker, setBroker] = useState<BrokerKind | ''>('')
+  const [query, setQuery] = useState('')
   const [page, setPage] = useState(0)
   const [editing, setEditing] = useState<Transaction | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const limit = 50
-  const filter = {
-    limit,
-    offset: page * limit,
+  // El broker y la etiqueta se filtran en cliente (el esquema no los acepta),
+  // así que en cuanto se usan el servidor entrega una ventana única y la
+  // paginación pasa a recortarse aquí.
+  const refining = isRefining(broker, query)
+  const serverFilter = {
     ...(accountId ? { accountId } : {}),
     ...(type ? { types: [type] } : {}),
+  }
+  const filter = {
+    ...serverFilter,
+    limit: refining ? SERVER_WINDOW : PAGE_SIZE,
+    offset: refining ? 0 : page * PAGE_SIZE,
   }
   const { data, loading, error, refetch } = useQuery(InvestmentTransactionsQuery, {
     variables: { filter },
   })
+  // `includeInactive` va en true porque una cuenta archivada sigue teniendo
+  // operaciones, y sin ella no se podría resolver su broker.
   const accounts = useQuery(InvestmentAccountsQuery, {
-    variables: { includeInactive: false },
+    variables: { includeInactive: true },
+  })
+  const allAccounts = useMemo(
+    () => accounts.data?.investmentAccounts ?? [],
+    [accounts.data],
+  )
+  const brokers = useMemo(() => brokersByAccount(allAccounts), [allAccounts])
+  const activeAccounts = allAccounts.filter((a) => a.isActive)
+  const accountOptions = broker
+    ? activeAccounts.filter((a) => a.broker === broker)
+    : activeAccounts
+  const rows = data?.investmentTransactions ?? []
+  const refined = refining ? refineTransactions(rows, { broker, query, brokers }) : rows
+  const { visible, count, saturated } = paginate(refined, {
+    refining,
+    page,
+    total: data?.investmentTransactionsCount ?? 0,
   })
   const [remove] = useMutation(DeleteInvestmentTransactionMutation)
   const [resolveFx, resolving] = useMutation(ResolveInvestmentFxRatesMutation)
   const { confirm, dialog } = useConfirm()
   useEffect(() => {
     setPage(0)
-  }, [accountId, type])
+  }, [accountId, type, broker, query])
+  // Cambiar de broker puede dejar seleccionada una cuenta de otro: se limpia.
+  useEffect(() => {
+    if (!broker || !accountId) return
+    if (!allAccounts.some((a) => a.id === accountId && a.broker === broker))
+      setAccountId('')
+  }, [broker, accountId, allAccounts])
   const close = () => {
     setEditing(null)
     if (isNew) navigate('/inversiones/operaciones', { replace: true })
@@ -89,7 +136,7 @@ export function InvestmentTransactionsPage() {
           <p className="text-ink-muted text-sm">Libro de inversión</p>
           <h1 className="text-ink text-2xl font-semibold">Operaciones</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
             disabled={resolving.loading}
@@ -102,7 +149,22 @@ export function InvestmentTransactionsPage() {
           </Button>
         </div>
       </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="text-sm">
+          <span className="text-ink-secondary mb-1 block">Broker</span>
+          <select
+            value={broker}
+            onChange={(e) => setBroker(e.target.value as BrokerKind | '')}
+            className="border-border bg-surface min-h-11 w-full rounded-lg border px-3"
+          >
+            <option value="">Todos</option>
+            {BROKERS.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="text-sm">
           <span className="text-ink-secondary mb-1 block">Cuenta</span>
           <select
@@ -111,7 +173,7 @@ export function InvestmentTransactionsPage() {
             className="border-border bg-surface min-h-11 w-full rounded-lg border px-3"
           >
             <option value="">Todas</option>
-            {accounts.data?.investmentAccounts.map((a) => (
+            {accountOptions.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
               </option>
@@ -133,7 +195,27 @@ export function InvestmentTransactionsPage() {
             ))}
           </select>
         </label>
+        <label className="text-sm">
+          <span className="text-ink-secondary mb-1 block">Activo</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Símbolo o nombre"
+            className="border-border bg-surface placeholder:text-ink-muted min-h-11 w-full rounded-lg border px-3"
+          />
+        </label>
       </div>
+      {saturated && (
+        <p
+          role="status"
+          className="border-warning/40 bg-warning/10 text-ink mt-3 rounded-lg border px-4 py-3 text-sm"
+        >
+          Hay más de {SERVER_WINDOW} operaciones con estos filtros. La búsqueda por
+          broker y etiqueta solo recorre las {SERVER_WINDOW} más recientes: acota por
+          cuenta o tipo para verlas todas. La exportación sí incluye el total.
+        </p>
+      )}
       {notice && (
         <p role="status" className="border-border mt-4 rounded-lg border p-3 text-sm">
           {notice}
@@ -144,24 +226,31 @@ export function InvestmentTransactionsPage() {
           <LoadingRows rows={7} />
         ) : error ? (
           <ErrorState message={getFirstErrorMessage(error)} />
-        ) : !data?.investmentTransactions.length ? (
+        ) : !visible.length ? (
           <EmptyState
-            title="Sin operaciones"
-            description="Registra una compra, depósito, dividendo u otro movimiento de tu cartera."
+            title={refining ? 'Sin resultados' : 'Sin operaciones'}
+            description={
+              refining
+                ? 'Ninguna operación casa con el broker o la etiqueta que buscas.'
+                : 'Registra una compra, depósito, dividendo u otro movimiento de tu cartera.'
+            }
             action={
-              <Button onClick={() => navigate('/inversiones/operaciones/nueva')}>
-                Registrar operación
-              </Button>
+              refining ? undefined : (
+                <Button onClick={() => navigate('/inversiones/operaciones/nueva')}>
+                  Registrar operación
+                </Button>
+              )
             }
           />
         ) : (
           <div className="border-border bg-surface-raised overflow-x-auto rounded-xl border">
-            <table className="w-full min-w-[780px] text-left text-sm">
+            <table className="w-full min-w-[880px] text-left text-sm">
               <thead className="bg-surface-sunken text-ink-muted">
                 <tr>
                   <th className="p-3">Fecha</th>
                   <th>Tipo</th>
                   <th>Activo</th>
+                  <th>Broker</th>
                   <th>Cuenta</th>
                   <th className="text-right">Cantidad</th>
                   <th className="text-right">Importe</th>
@@ -169,7 +258,7 @@ export function InvestmentTransactionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.investmentTransactions.map((row) => (
+                {visible.map((row) => (
                   <tr key={row.id} className="border-border border-t">
                     <td className="p-3">{row.occurredOn}</td>
                     <td>{TRANSACTION_LABELS[row.type]}</td>
@@ -186,6 +275,9 @@ export function InvestmentTransactionsPage() {
                       ) : (
                         '—'
                       )}
+                    </td>
+                    <td className="text-ink-secondary">
+                      {brokerLabel(brokers.get(row.accountId))}
                     </td>
                     <td>{row.account.name}</td>
                     <td className="tabular text-right">
@@ -215,7 +307,7 @@ export function InvestmentTransactionsPage() {
           </div>
         )}
       </div>
-      {data && data.investmentTransactionsCount > limit && (
+      {count > PAGE_SIZE && (
         <div className="mt-4 flex items-center justify-between">
           <Button
             variant="secondary"
@@ -225,13 +317,11 @@ export function InvestmentTransactionsPage() {
             Anterior
           </Button>
           <span className="text-ink-muted text-sm">
-            {page * limit + 1}–
-            {Math.min((page + 1) * limit, data.investmentTransactionsCount)} de{' '}
-            {data.investmentTransactionsCount}
+            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, count)} de {count}
           </span>
           <Button
             variant="secondary"
-            disabled={(page + 1) * limit >= data.investmentTransactionsCount}
+            disabled={(page + 1) * PAGE_SIZE >= count}
             onClick={() => setPage((p) => p + 1)}
           >
             Siguiente
