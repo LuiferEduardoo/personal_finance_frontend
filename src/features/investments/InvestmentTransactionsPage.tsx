@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@apollo/client'
+import { useApolloClient, useMutation, useQuery } from '@apollo/client'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { Button } from '@/components/Button'
@@ -28,6 +28,11 @@ import {
   SERVER_WINDOW,
 } from './transaction-filters'
 import {
+  buildTransactionsWorkbook,
+  downloadBlob,
+  workbookFileName,
+} from './transaction-export'
+import {
   CreateInvestmentTransactionMutation,
   DeleteInvestmentTransactionMutation,
   InstrumentSearchQuery,
@@ -55,6 +60,8 @@ export function InvestmentTransactionsPage() {
   const [page, setPage] = useState(0)
   const [editing, setEditing] = useState<Transaction | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const apollo = useApolloClient()
   // El broker y la etiqueta se filtran en cliente (el esquema no los acepta),
   // así que en cuanto se usan el servidor entrega una ventana única y la
   // paginación pasa a recortarse aquí.
@@ -118,6 +125,47 @@ export function InvestmentTransactionsPage() {
       setNotice(getFirstErrorMessage(caught))
     }
   }
+  /**
+   * Exporta todo lo que casa con los filtros, no solo la página a la vista: el
+   * backend topa en 500 por consulta, así que se recorre por tandas hasta
+   * cubrir el total que él mismo informa.
+   */
+  const exportToExcel = async () => {
+    setExporting(true)
+    try {
+      const all: Transaction[] = []
+      let total = Infinity
+      while (all.length < total) {
+        const chunk = await apollo.query({
+          query: InvestmentTransactionsQuery,
+          variables: {
+            filter: { ...serverFilter, limit: SERVER_WINDOW, offset: all.length },
+          },
+          fetchPolicy: 'network-only',
+        })
+        const batch = chunk.data.investmentTransactions
+        total = chunk.data.investmentTransactionsCount
+        if (!batch.length) break
+        all.push(...batch)
+      }
+      const exported = refining
+        ? refineTransactions(all, { broker, query, brokers })
+        : all
+      if (!exported.length) {
+        setNotice('No hay operaciones que exportar con estos filtros.')
+        return
+      }
+      downloadBlob(
+        await buildTransactionsWorkbook(exported, brokers),
+        workbookFileName(),
+      )
+      setNotice(`${exported.length} operaciones exportadas a Excel.`)
+    } catch (caught) {
+      setNotice(getFirstErrorMessage(caught))
+    } finally {
+      setExporting(false)
+    }
+  }
   const fixFx = async () => {
     try {
       const result = await resolveFx()
@@ -137,6 +185,13 @@ export function InvestmentTransactionsPage() {
           <h1 className="text-ink text-2xl font-semibold">Operaciones</h1>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            disabled={exporting || loading}
+            onClick={() => void exportToExcel()}
+          >
+            {exporting ? 'Exportando…' : 'Exportar a Excel'}
+          </Button>
           <Button
             variant="secondary"
             disabled={resolving.loading}

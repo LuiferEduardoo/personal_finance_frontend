@@ -19,6 +19,7 @@
   "dependencies": {
     "@apollo/client": "^3.14.0",
     "@hookform/resolvers": "^5.2.2",
+    "exceljs": "^4.4.0",
     "graphql": "^16.11.0",
     "lightweight-charts": "^5.2.1",
     "qrcode": "^1.5.4",
