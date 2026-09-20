@@ -72,10 +72,11 @@ describe('efectivo fantasma por TRM sin resolver', () => {
 
   it('convierte cada depósito con la tasa de su Convert', () => {
     const usd = deposits.map(({ cop, trm }) => cop * fxRateFromTrm(trm, 'COP', 'USD')!)
-    expect(usd[0]).toBeCloseTo(13.3546, 3)
-    expect(usd[1]).toBeCloseTo(7.197, 3)
-    expect(usd[2]).toBeCloseTo(25.4461, 3)
-    expect(usd.reduce((a, b) => a + b)).toBeCloseTo(45.9977, 3)
+    // Valores exactos de la división, no los redondeados del reporte.
+    expect(usd[0]).toBeCloseTo(13.35455818, 8)
+    expect(usd[1]).toBeCloseTo(7.19704441, 8)
+    expect(usd[2]).toBeCloseTo(25.4461326, 7)
+    expect(usd.reduce((a, b) => a + b)).toBeCloseTo(45.99773519, 8)
   })
 
   it('reproduce los 7,09 USD de efectivo fantasma de la tasa por defecto', () => {
@@ -85,7 +86,7 @@ describe('efectivo fantasma por TRM sin resolver', () => {
       (sum, { cop, trm }) => sum + cop * fxRateFromTrm(trm, 'COP', 'USD')!,
       0,
     )
-    expect(withLatest).toBeCloseTo(53.0862, 3)
-    expect(withLatest - withReal).toBeCloseTo(7.0885, 3)
+    expect(withLatest).toBeCloseTo(53.08620322, 8)
+    expect(withLatest - withReal).toBeCloseTo(7.08846803, 8)
   })
 })

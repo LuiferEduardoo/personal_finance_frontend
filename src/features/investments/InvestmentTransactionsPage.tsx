@@ -39,6 +39,7 @@ import {
   DeleteInvestmentTransactionMutation,
   InstrumentSearchQuery,
   InvestmentAccountsQuery,
+  InvestmentOverviewQuery,
   InvestmentTransactionsQuery,
   ResolveInvestmentFxRatesMutation,
   UpdateInvestmentTransactionMutation,
@@ -52,21 +53,20 @@ const brokerLabel = (broker: BrokerKind | undefined) =>
   broker ? BROKER_LABELS[broker] : '—'
 
 /**
- * El backend valora la cartera en USD. Un depósito en COP cuyo `fxRate` no se
- * resolvió se convierte con la TRM más reciente en vez de la del día, y eso
- * infla el efectivo: tres depósitos de 169.500 COP entraron como 53,09 USD a
- * 3.192,92 cuando sus compras reales sumaban 46,00 a las tasas del momento.
+ * Solo se usa si `portfolioSummary` no está en caché todavía. La base real la
+ * decide el backend y viaja en `portfolioSummary.baseCurrency`; USD es lo que
+ * responde hoy, y es la única suposición que queda aquí.
  */
-const PORTFOLIO_BASE = 'USD'
+const FALLBACK_PORTFOLIO_BASE = 'USD'
 
 /**
  * TRM con la que quedó guardado el depósito. `ASSUMED_ONE` marca que el backend
  * no resolvió ninguna y dejó la tasa en 1; devolverla mostraría una TRM
  * imposible, así que el campo arranca vacío para que se escriba la real.
  */
-function storedTrm(transaction?: Transaction): number | null {
+function storedTrm(transaction: Transaction | undefined, base: string): number | null {
   if (!transaction || transaction.fxRateSource === 'ASSUMED_ONE') return null
-  return trmFromFxRate(transaction.fxRate, transaction.currency, PORTFOLIO_BASE)
+  return trmFromFxRate(transaction.fxRate, transaction.currency, base)
 }
 
 export function InvestmentTransactionsPage() {
@@ -457,7 +457,16 @@ function TransactionForm({
       'USD',
   )
   const [fxRate, setFxRate] = useState(transaction?.fxRate?.toString() ?? '')
-  const [trm, setTrm] = useState(storedTrm(transaction)?.toString() ?? '')
+  // Sin red: si la pantalla de resumen ya se visitó, la base real está en
+  // caché; si no, se cae al valor por defecto documentado.
+  const cachedOverview = useQuery(InvestmentOverviewQuery, {
+    fetchPolicy: 'cache-only',
+  })
+  const portfolioBase =
+    cachedOverview.data?.portfolioSummary.baseCurrency ?? FALLBACK_PORTFOLIO_BASE
+  const [trm, setTrm] = useState(
+    storedTrm(transaction, portfolioBase)?.toString() ?? '',
+  )
   const [notes, setNotes] = useState(transaction?.notes ?? '')
   const [settlementCurrency, setSettlementCurrency] = useState(
     transaction?.settlementCurrency ?? '',
@@ -491,18 +500,18 @@ function TransactionForm({
   // guardada es la que manda, y es la que decide si la TRM aplica. Usar la del
   // formulario dejaría guardar una tasa COP sobre una operación en USD.
   const trmCurrency = transaction?.currency.toUpperCase() ?? upperCurrency
-  const needsTrm = type === 'DEPOSIT' && supportsTrm(trmCurrency, PORTFOLIO_BASE)
+  const needsTrm = type === 'DEPOSIT' && supportsTrm(trmCurrency, portfolioBase)
   const latestTrm = useQuery(LatestTrmQuery, { skip: !needsTrm })
   const latestQuote = latestTrm.data?.latestTrm
   const trmRate = needsTrm
-    ? fxRateFromTrm(Number(trm), trmCurrency, PORTFOLIO_BASE)
+    ? fxRateFromTrm(Number(trm), trmCurrency, portfolioBase)
     : null
   // Lo que el depósito aportará a la cartera con la tasa escrita. Es la cifra
   // que tiene que cuadrar con la compra que financia.
   const trmPreview =
     trmRate == null || num(amount) === undefined
       ? null
-      : `${upperCurrency} ${Number(amount).toLocaleString('es-CO')} → ${PORTFOLIO_BASE} ${(
+      : `${upperCurrency} ${Number(amount).toLocaleString('es-CO')} → ${portfolioBase} ${(
           Number(amount) * trmRate
         ).toLocaleString('es-CO', { maximumFractionDigits: 4 })}`
   const grossAmount =
