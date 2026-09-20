@@ -42,3 +42,19 @@ describe('TRM y tasa a moneda base', () => {
     expect(trmFromFxRate(4_150.25, 'USD', 'COP')).toBe(4_150.25)
   })
 })
+
+describe('reabrir un depósito guardado', () => {
+  it('devuelve la TRM sin ruido de coma flotante', () => {
+    // 1/(1/3000.5) da 3000.4999999999995 sin redondeo.
+    expect(trmFromFxRate(1 / 3_000.5, 'COP', 'USD')).toBe(3_000.5)
+    expect(trmFromFxRate(1 / 3_000.25, 'COP', 'USD')).toBe(3_000.25)
+    expect(trmFromFxRate(1 / 4_150.25, 'COP', 'USD')).toBe(4_150.25)
+  })
+
+  it('sobrevive al ciclo editar y guardar sin mover el importe', () => {
+    const original = fxRateFromTrm(3_000.5, 'COP', 'USD')!
+    const reopened = trmFromFxRate(original, 'COP', 'USD')!
+    const resaved = fxRateFromTrm(reopened, 'COP', 'USD')!
+    expect(4_000_000 * resaved).toBeCloseTo(4_000_000 * original, 9)
+  })
+})

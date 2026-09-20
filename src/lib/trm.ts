@@ -28,7 +28,13 @@ export function fxRateFromTrm(
   return trmFactor(currency, baseCurrency, trm)
 }
 
-/** Inversa de `fxRateFromTrm`, para reabrir una operación ya guardada. */
+/**
+ * Inversa de `fxRateFromTrm`, para reabrir una operación ya guardada. Redondea
+ * a cuatro decimales porque 1/(1/TRM) no vuelve exacta en coma flotante en
+ * cerca de un sexto de las TRM plausibles: sin esto, editar un depósito de
+ * 3.000,50 mostraría 3.000,4999999999995. La TRM oficial se cotiza con dos
+ * decimales, así que cuatro no pierden nada real.
+ */
 export function trmFromFxRate(
   fxRate: number | null | undefined,
   currency: string,
@@ -37,5 +43,5 @@ export function trmFromFxRate(
   if (fxRate == null || !(fxRate > 0)) return null
   if (currency === baseCurrency) return null
   if (!supportsTrm(currency, baseCurrency)) return null
-  return currency === 'COP' ? 1 / fxRate : fxRate
+  return Number((currency === 'COP' ? 1 / fxRate : fxRate).toFixed(4))
 }

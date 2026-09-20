@@ -478,11 +478,15 @@ function TransactionForm({
   // conversión depende de la TRM del día del depósito, no de la de hoy. El
   // backend solo sabe resolver la última, así que aquí se pide explícitamente.
   const upperCurrency = currency.toUpperCase()
-  const needsTrm = type === 'DEPOSIT' && supportsTrm(upperCurrency, baseCurrency)
+  // UpdateInvestmentTransactionInput no lleva `currency`: al editar, la moneda
+  // guardada es la que manda, y es la que decide si la TRM aplica. Usar la del
+  // formulario dejaría guardar una tasa COP sobre una operación en USD.
+  const trmCurrency = transaction?.currency.toUpperCase() ?? upperCurrency
+  const needsTrm = type === 'DEPOSIT' && supportsTrm(trmCurrency, baseCurrency)
   const latestTrm = useQuery(LatestTrmQuery, { skip: !needsTrm })
   const latestQuote = latestTrm.data?.latestTrm
   const trmRate = needsTrm
-    ? fxRateFromTrm(Number(trm), upperCurrency, baseCurrency)
+    ? fxRateFromTrm(Number(trm), trmCurrency, baseCurrency)
     : null
   const grossAmount =
     calculatesGrossAmount && num(quantity) !== undefined && num(price) !== undefined
@@ -657,8 +661,14 @@ function TransactionForm({
           value={currency}
           maxLength={3}
           onChange={(e) => setCurrency(e.target.value)}
+          readOnly={!!transaction}
           required
         />
+        {transaction && (
+          <p className="text-ink-muted col-span-2 text-xs">
+            La moneda no se puede cambiar después de registrar la operación.
+          </p>
+        )}
       </div>
       {needsTrm && (
         <div>
@@ -676,8 +686,9 @@ function TransactionForm({
             }
           />
           <p className="text-ink-muted mt-1.5 text-xs">
-            La TRM que regía el día del depósito, no la de hoy: es la que fija cuánto
-            entró a la cartera en {baseCurrency}.
+            {transaction
+              ? `Corrígela si el depósito se registró con otra tasa: cambia cuánto entró a la cartera en ${baseCurrency}.`
+              : `La TRM que regía el día del depósito, no la de hoy: es la que fija cuánto entró a la cartera en ${baseCurrency}.`}
           </p>
           {latestQuote && (
             <p className="text-ink-muted mt-1 text-xs">
