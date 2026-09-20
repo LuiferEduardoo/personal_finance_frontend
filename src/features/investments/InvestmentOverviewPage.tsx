@@ -72,25 +72,49 @@ export function InvestmentOverviewPage() {
     }
   }
 
-  if (loading)
+  if (loading || trm.loading)
     return (
       <Page>
         <LoadingRows rows={5} />
       </Page>
     )
-  if (error || !data)
+  if (error || trm.error || !data || !trm.data)
     return (
       <Page>
-        <ErrorState message={getFirstErrorMessage(error)} />
+        <ErrorState message={getFirstErrorMessage(error ?? trm.error)} />
       </Page>
     )
   const { portfolioSummary: summary } = data
+  const latestTrm = trm.data.latestTrm.value
   const displayCurrency = user?.investmentBaseCurrency ?? summary.baseCurrency
-  const factor = trm.data
-    ? trmFactor(summary.baseCurrency, displayCurrency, trm.data.latestTrm.value)
-    : 1
+  const factor = trmFactor(
+    summary.baseCurrency,
+    displayCurrency,
+    latestTrm,
+  )
   const money = (value: number | null | undefined) =>
     compactMoney(value == null ? value : value * factor, displayCurrency)
+  const displayFactor = (currency: string) =>
+    trmFactor(currency, displayCurrency, latestTrm)
+  const positionValues = (position: (typeof data.investmentPositions)[number]) => {
+    const marketValue = position.lastPrice == null
+      ? null
+      : position.quantity * position.lastPrice * displayFactor(position.instrument.currency)
+    const costBasis =
+      position.quantity * position.averageCost * displayFactor(position.currency)
+    return {
+      marketValue,
+      unrealizedPnl: marketValue == null ? null : marketValue - costBasis,
+      unrealizedReturn:
+        marketValue == null || costBasis === 0
+          ? null
+          : (marketValue - costBasis) / costBasis,
+    }
+  }
+  const currentUnrealizedPnl = data.investmentPositions.reduce((total, position) => {
+    const value = positionValues(position).unrealizedPnl
+    return total + (value ?? 0)
+  }, 0)
   const returns =
     periodReturns.data?.portfolioReturns ?? periodReturns.previousData?.portfolioReturns
   const evolutionPoints = filterPointsByRange(
@@ -159,8 +183,8 @@ export function InvestmentOverviewPage() {
         />
         <Metric
           label="Ganancia no realizada"
-          value={money(returns?.unrealizedPnl ?? lastPoint?.unrealizedPnl)}
-          tone={returns?.unrealizedPnl ?? lastPoint?.unrealizedPnl}
+          value={compactMoney(currentUnrealizedPnl, displayCurrency)}
+          tone={currentUnrealizedPnl}
         />
         <Metric
           label="Rentabilidad simple"
@@ -200,8 +224,11 @@ export function InvestmentOverviewPage() {
         ) : (
           <div className="mt-4">
             <PortfolioValueChart
-              points={evolutionPoints}
-              currency={summary.baseCurrency}
+              points={evolutionPoints.map((point) => ({
+                ...point,
+                totalValue: point.totalValue * factor,
+              }))}
+              currency={displayCurrency}
               range={dateRange}
             />
           </div>
@@ -234,9 +261,12 @@ export function InvestmentOverviewPage() {
             </div>
           ) : allocation.data ? (
             <AllocationDonut
-              slices={allocation.data.portfolioAllocation.slices}
-              currency={allocation.data.portfolioAllocation.baseCurrency}
-              total={allocation.data.portfolioAllocation.total}
+              slices={allocation.data.portfolioAllocation.slices.map((slice) => ({
+                ...slice,
+                marketValue: slice.marketValue * factor,
+              }))}
+              currency={displayCurrency}
+              total={allocation.data.portfolioAllocation.total * factor}
             />
           ) : null}
         </section>
@@ -361,8 +391,9 @@ export function InvestmentOverviewPage() {
               </tr>
             </thead>
             <tbody>
-              {data.investmentPositions.map((position) => (
-                <tr key={position.id} className="border-border border-t">
+              {data.investmentPositions.map((position) => {
+                const values = positionValues(position)
+                return <tr key={position.id} className="border-border border-t">
                   <td className="p-3">
                     <p className="text-ink font-medium">{position.instrument.symbol}</p>
                     <p className="text-ink-muted text-xs">{position.instrument.name}</p>
@@ -372,16 +403,16 @@ export function InvestmentOverviewPage() {
                     {position.quantity.toLocaleString('es-CO')}
                   </td>
                   <td className="tabular text-right">
-                    {compactMoney(position.marketValueBase, summary.baseCurrency)}
+                    {compactMoney(values.marketValue, displayCurrency)}
                   </td>
                   <td
-                    className={`tabular p-3 text-right ${(position.unrealizedPnlBase ?? 0) >= 0 ? 'text-income' : 'text-expense'}`}
+                    className={`tabular p-3 text-right ${(values.unrealizedPnl ?? 0) >= 0 ? 'text-income' : 'text-expense'}`}
                   >
-                    {compactMoney(position.unrealizedPnlBase, summary.baseCurrency)}
-                    <p className="text-xs">{percent(position.unrealizedReturn)}</p>
+                    {compactMoney(values.unrealizedPnl, displayCurrency)}
+                    <p className="text-xs">{percent(values.unrealizedReturn)}</p>
                   </td>
                 </tr>
-              ))}
+              })}
             </tbody>
           </table>
         </div>
