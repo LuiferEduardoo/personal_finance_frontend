@@ -316,6 +316,11 @@ function TransactionForm({
   const [create, creating] = useMutation(CreateInvestmentTransactionMutation)
   const [update, updating] = useMutation(UpdateInvestmentTransactionMutation)
   const num = (value: string) => (value === '' ? undefined : Number(value))
+  const calculatesGrossAmount = type === 'BUY' || type === 'SELL'
+  const grossAmount =
+    calculatesGrossAmount && num(quantity) !== undefined && num(price) !== undefined
+      ? String(Math.round(num(quantity)! * num(price)! * 1_000_000) / 1_000_000)
+      : amount
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -328,7 +333,7 @@ function TransactionForm({
               occurredOn: date,
               quantity: num(quantity),
               price: num(price),
-              amount: num(amount),
+              amount: num(grossAmount),
               fee: num(fee),
               tax: num(tax),
               fxRate: num(fxRate),
@@ -348,7 +353,7 @@ function TransactionForm({
               instrumentId: instrumentId || undefined,
               quantity: num(quantity),
               price: num(price),
-              amount: num(amount),
+              amount: num(grossAmount),
               fee: num(fee),
               tax: num(tax),
               currency: currency.toUpperCase(),
@@ -471,11 +476,12 @@ function TransactionForm({
         )}{' '}
         {type !== 'SPLIT' && (
           <Field
-            label="Importe bruto"
+            label={`Importe bruto${calculatesGrossAmount ? ' (automático)' : ''}`}
             type="number"
             step="any"
             min="0"
-            value={amount}
+            value={grossAmount}
+            readOnly={calculatesGrossAmount}
             onChange={(e) => setAmount(e.target.value)}
           />
         )}
