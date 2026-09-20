@@ -54,10 +54,19 @@ describe('edición del borrador de importación', () => {
 
     expect(
       missingInstruments(
-        [missing, { ...missing, rowNumber: 2, symbol: ' meli ', currency: 'usd' }],
+        [
+          { ...missing, sector: null },
+          {
+            ...missing,
+            rowNumber: 2,
+            symbol: ' meli ',
+            currency: 'usd',
+            sector: 'Tecnología',
+          },
+        ],
         'COP',
       ),
-    ).toEqual([{ symbol: 'MELI', currency: 'COP' }])
+    ).toEqual([{ symbol: 'MELI', currency: 'COP', sector: 'Tecnología' }])
   })
 
   it('asigna el activo creado a todas sus operaciones', () => {

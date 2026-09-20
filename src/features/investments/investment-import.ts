@@ -6,6 +6,7 @@ export type EditableRowField =
 export type MissingInstrument = {
   symbol: string
   currency: string
+  sector: string | null
 }
 
 const INSTRUMENT_REQUIRED_TYPES = new Set([
@@ -94,14 +95,20 @@ export function missingInstruments(
       !row.needsInstrument ||
       row.isDuplicate ||
       row.errors.length > 0 ||
-      !symbol ||
-      bySymbol.has(symbol)
+      !symbol
     )
       continue
+
+    const existing = bySymbol.get(symbol)
+    if (existing) {
+      existing.sector ||= row.sector?.trim() || null
+      continue
+    }
 
     bySymbol.set(symbol, {
       symbol,
       currency: row.currency?.trim().toUpperCase() || fallbackCurrency.toUpperCase(),
+      sector: row.sector?.trim() || null,
     })
   }
 

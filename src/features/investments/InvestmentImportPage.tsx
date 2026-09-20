@@ -107,6 +107,8 @@ export function InvestmentImportPage() {
               name: instrument.symbol,
               currency: instrument.currency,
               assetClass: 'EQUITY',
+              twelveDataSymbol: instrument.symbol,
+              sector: instrument.sector || undefined,
             },
           },
         })

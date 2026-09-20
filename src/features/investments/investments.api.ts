@@ -5,6 +5,7 @@ export type ImportRow = {
   type: string | null
   occurredOn: string | null
   symbol: string | null
+  sector?: string | null
   instrumentId: string | null
   needsInstrument: boolean
   quantity: number | null
