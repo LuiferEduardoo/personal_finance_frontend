@@ -6,6 +6,9 @@ import { Field } from '@/components/Field'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { useConfirm } from '@/components/ConfirmDialog'
+import { useSession } from '@/features/auth/SessionContext'
+import { LatestTrmQuery } from '@/features/settings/trm.queries'
+import { fxRateFromTrm, supportsTrm, trmFromFxRate } from '@/lib/trm'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import type {
   BrokerKind,
@@ -437,6 +440,15 @@ function TransactionForm({
       'USD',
   )
   const [fxRate, setFxRate] = useState(transaction?.fxRate?.toString() ?? '')
+  const { user } = useSession()
+  const baseCurrency = user?.baseCurrency ?? 'USD'
+  const [trm, setTrm] = useState(
+    trmFromFxRate(
+      transaction?.fxRate,
+      transaction?.currency ?? '',
+      user?.baseCurrency ?? 'USD',
+    )?.toString() ?? '',
+  )
   const [notes, setNotes] = useState(transaction?.notes ?? '')
   const [settlementCurrency, setSettlementCurrency] = useState(
     transaction?.settlementCurrency ?? '',
@@ -462,6 +474,16 @@ function TransactionForm({
   const [update, updating] = useMutation(UpdateInvestmentTransactionMutation)
   const num = (value: string) => (value === '' ? undefined : Number(value))
   const calculatesGrossAmount = type === 'BUY' || type === 'SELL'
+  // Un depósito en pesos llega a la cartera convertido a la moneda base, y esa
+  // conversión depende de la TRM del día del depósito, no de la de hoy. El
+  // backend solo sabe resolver la última, así que aquí se pide explícitamente.
+  const upperCurrency = currency.toUpperCase()
+  const needsTrm = type === 'DEPOSIT' && supportsTrm(upperCurrency, baseCurrency)
+  const latestTrm = useQuery(LatestTrmQuery, { skip: !needsTrm })
+  const latestQuote = latestTrm.data?.latestTrm
+  const trmRate = needsTrm
+    ? fxRateFromTrm(Number(trm), upperCurrency, baseCurrency)
+    : null
   const grossAmount =
     calculatesGrossAmount && num(quantity) !== undefined && num(price) !== undefined
       ? String(Math.round(num(quantity)! * num(price)! * 1_000_000) / 1_000_000)
@@ -481,7 +503,7 @@ function TransactionForm({
               amount: num(grossAmount),
               fee: num(fee),
               tax: num(tax),
-              fxRate: num(fxRate),
+              fxRate: needsTrm ? (trmRate ?? undefined) : num(fxRate),
               splitRatioNumerator: num(ratioN),
               splitRatioDenominator: num(ratioD),
               notes: notes || undefined,
@@ -501,8 +523,8 @@ function TransactionForm({
               amount: num(grossAmount),
               fee: num(fee),
               tax: num(tax),
-              currency: currency.toUpperCase(),
-              fxRate: num(fxRate),
+              currency: upperCurrency,
+              fxRate: needsTrm ? (trmRate ?? undefined) : num(fxRate),
               settlementCurrency: settlementCurrency || undefined,
               settlementAmount: num(settlementAmount),
               splitRatioNumerator: num(ratioN),
@@ -638,6 +660,40 @@ function TransactionForm({
           required
         />
       </div>
+      {needsTrm && (
+        <div>
+          <Field
+            label={`TRM del ${date} (USD/COP)`}
+            type="number"
+            step="any"
+            min="0"
+            value={trm}
+            onChange={(e) => setTrm(e.target.value)}
+            placeholder="Ej. 4150.25"
+            required
+            error={
+              trm !== '' && trmRate == null ? 'Escribe una TRM mayor que 0.' : undefined
+            }
+          />
+          <p className="text-ink-muted mt-1.5 text-xs">
+            La TRM que regía el día del depósito, no la de hoy: es la que fija cuánto
+            entró a la cartera en {baseCurrency}.
+          </p>
+          {latestQuote && (
+            <p className="text-ink-muted mt-1 text-xs">
+              Última TRM oficial: {latestQuote.value.toLocaleString('es-CO')} (desde{' '}
+              {latestQuote.validFrom}).{' '}
+              <button
+                type="button"
+                onClick={() => setTrm(String(latestQuote.value))}
+                className="text-ink underline"
+              >
+                Usarla
+              </button>
+            </p>
+          )}
+        </div>
+      )}
       {type === 'SPLIT' && (
         <div className="grid grid-cols-2 gap-3">
           <Field
@@ -720,19 +776,23 @@ function TransactionForm({
             value={tax}
             onChange={(e) => setTax(e.target.value)}
           />
-          <Field
-            label="Tasa a moneda base (opcional)"
-            type="number"
-            step="any"
-            min="0"
-            value={fxRate}
-            onChange={(e) => setFxRate(e.target.value)}
-          />
-          {!transaction && (
-            <p className="text-ink-muted col-span-2 text-xs">
-              Si la dejas vacía, USD y COP se convierten automáticamente con la TRM
-              oficial más reciente.
-            </p>
+          {!needsTrm && (
+            <>
+              <Field
+                label="Tasa a moneda base (opcional)"
+                type="number"
+                step="any"
+                min="0"
+                value={fxRate}
+                onChange={(e) => setFxRate(e.target.value)}
+              />
+              {!transaction && (
+                <p className="text-ink-muted col-span-2 text-xs">
+                  Si la dejas vacía, USD y COP se convierten automáticamente con la TRM
+                  oficial más reciente.
+                </p>
+              )}
+            </>
           )}
         </div>
         <label className="mt-3 block text-sm">
@@ -747,7 +807,12 @@ function TransactionForm({
       {message && <ErrorState message={message} />}
       <Button
         type="submit"
-        disabled={creating.loading || updating.loading || (!transaction && !accountId)}
+        disabled={
+          creating.loading ||
+          updating.loading ||
+          (!transaction && !accountId) ||
+          (needsTrm && trmRate == null)
+        }
       >
         {transaction ? 'Guardar cambios' : 'Registrar operación'}
       </Button>
