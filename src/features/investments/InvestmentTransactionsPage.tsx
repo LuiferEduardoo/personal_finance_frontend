@@ -291,7 +291,7 @@ function TransactionForm({
       accounts.find((a) => a.id === accountId)?.currency ??
       'USD',
   )
-  const [fxRate, setFxRate] = useState(transaction?.fxRate?.toString() ?? '1')
+  const [fxRate, setFxRate] = useState(transaction?.fxRate?.toString() ?? '')
   const [notes, setNotes] = useState(transaction?.notes ?? '')
   const [settlementCurrency, setSettlementCurrency] = useState(
     transaction?.settlementCurrency ?? '',
@@ -570,13 +570,19 @@ function TransactionForm({
             onChange={(e) => setTax(e.target.value)}
           />
           <Field
-            label="Tasa a moneda base"
+            label="Tasa a moneda base (opcional)"
             type="number"
             step="any"
             min="0"
             value={fxRate}
             onChange={(e) => setFxRate(e.target.value)}
           />
+          {!transaction && (
+            <p className="text-ink-muted col-span-2 text-xs">
+              Si la dejas vacía, USD y COP se convierten automáticamente con la TRM
+              oficial más reciente.
+            </p>
+          )}
         </div>
         <label className="mt-3 block text-sm">
           <span className="text-ink-secondary mb-1 block">Notas</span>
