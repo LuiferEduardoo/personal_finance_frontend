@@ -58,3 +58,34 @@ describe('reabrir un depósito guardado', () => {
     expect(4_000_000 * resaved).toBeCloseTo(4_000_000 * original, 9)
   })
 })
+
+describe('efectivo fantasma por TRM sin resolver', () => {
+  // Caso real de Binance: tres depósitos en COP, cada uno financiando un
+  // Convert. Con la tasa del momento el saldo cuadra; con la TRM más reciente
+  // aparecen ~7 USD que nunca existieron.
+  const deposits = [
+    { cop: 50_000, trm: 3_744.04 },
+    { cop: 27_000, trm: 3_751.54 },
+    { cop: 92_500, trm: 3_635.13 },
+  ]
+  const LATEST_TRM = 3_192.92
+
+  it('convierte cada depósito con la tasa de su Convert', () => {
+    const usd = deposits.map(({ cop, trm }) => cop * fxRateFromTrm(trm, 'COP', 'USD')!)
+    expect(usd[0]).toBeCloseTo(13.3546, 3)
+    expect(usd[1]).toBeCloseTo(7.197, 3)
+    expect(usd[2]).toBeCloseTo(25.4461, 3)
+    expect(usd.reduce((a, b) => a + b)).toBeCloseTo(45.9977, 3)
+  })
+
+  it('reproduce los 7,09 USD de efectivo fantasma de la tasa por defecto', () => {
+    const totalCop = deposits.reduce((sum, d) => sum + d.cop, 0)
+    const withLatest = totalCop * fxRateFromTrm(LATEST_TRM, 'COP', 'USD')!
+    const withReal = deposits.reduce(
+      (sum, { cop, trm }) => sum + cop * fxRateFromTrm(trm, 'COP', 'USD')!,
+      0,
+    )
+    expect(withLatest).toBeCloseTo(53.0862, 3)
+    expect(withLatest - withReal).toBeCloseTo(7.0885, 3)
+  })
+})

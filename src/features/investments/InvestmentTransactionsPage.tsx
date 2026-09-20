@@ -6,7 +6,6 @@ import { Field } from '@/components/Field'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { useConfirm } from '@/components/ConfirmDialog'
-import { useSession } from '@/features/auth/SessionContext'
 import { LatestTrmQuery } from '@/features/settings/trm.queries'
 import { fxRateFromTrm, supportsTrm, trmFromFxRate } from '@/lib/trm'
 import { getFirstErrorMessage } from '@/graphql/errors'
@@ -51,6 +50,24 @@ const BROKERS = Object.entries(BROKER_LABELS) as [BrokerKind, string][]
 
 const brokerLabel = (broker: BrokerKind | undefined) =>
   broker ? BROKER_LABELS[broker] : '—'
+
+/**
+ * El backend valora la cartera en USD. Un depósito en COP cuyo `fxRate` no se
+ * resolvió se convierte con la TRM más reciente en vez de la del día, y eso
+ * infla el efectivo: tres depósitos de 169.500 COP entraron como 53,09 USD a
+ * 3.192,92 cuando sus compras reales sumaban 46,00 a las tasas del momento.
+ */
+const PORTFOLIO_BASE = 'USD'
+
+/**
+ * TRM con la que quedó guardado el depósito. `ASSUMED_ONE` marca que el backend
+ * no resolvió ninguna y dejó la tasa en 1; devolverla mostraría una TRM
+ * imposible, así que el campo arranca vacío para que se escriba la real.
+ */
+function storedTrm(transaction?: Transaction): number | null {
+  if (!transaction || transaction.fxRateSource === 'ASSUMED_ONE') return null
+  return trmFromFxRate(transaction.fxRate, transaction.currency, PORTFOLIO_BASE)
+}
 
 export function InvestmentTransactionsPage() {
   const location = useLocation()
@@ -440,15 +457,7 @@ function TransactionForm({
       'USD',
   )
   const [fxRate, setFxRate] = useState(transaction?.fxRate?.toString() ?? '')
-  const { user } = useSession()
-  const baseCurrency = user?.baseCurrency ?? 'USD'
-  const [trm, setTrm] = useState(
-    trmFromFxRate(
-      transaction?.fxRate,
-      transaction?.currency ?? '',
-      user?.baseCurrency ?? 'USD',
-    )?.toString() ?? '',
-  )
+  const [trm, setTrm] = useState(storedTrm(transaction)?.toString() ?? '')
   const [notes, setNotes] = useState(transaction?.notes ?? '')
   const [settlementCurrency, setSettlementCurrency] = useState(
     transaction?.settlementCurrency ?? '',
@@ -482,12 +491,20 @@ function TransactionForm({
   // guardada es la que manda, y es la que decide si la TRM aplica. Usar la del
   // formulario dejaría guardar una tasa COP sobre una operación en USD.
   const trmCurrency = transaction?.currency.toUpperCase() ?? upperCurrency
-  const needsTrm = type === 'DEPOSIT' && supportsTrm(trmCurrency, baseCurrency)
+  const needsTrm = type === 'DEPOSIT' && supportsTrm(trmCurrency, PORTFOLIO_BASE)
   const latestTrm = useQuery(LatestTrmQuery, { skip: !needsTrm })
   const latestQuote = latestTrm.data?.latestTrm
   const trmRate = needsTrm
-    ? fxRateFromTrm(Number(trm), trmCurrency, baseCurrency)
+    ? fxRateFromTrm(Number(trm), trmCurrency, PORTFOLIO_BASE)
     : null
+  // Lo que el depósito aportará a la cartera con la tasa escrita. Es la cifra
+  // que tiene que cuadrar con la compra que financia.
+  const trmPreview =
+    trmRate == null || num(amount) === undefined
+      ? null
+      : `${upperCurrency} ${Number(amount).toLocaleString('es-CO')} → ${PORTFOLIO_BASE} ${(
+          Number(amount) * trmRate
+        ).toLocaleString('es-CO', { maximumFractionDigits: 4 })}`
   const grossAmount =
     calculatesGrossAmount && num(quantity) !== undefined && num(price) !== undefined
       ? String(Math.round(num(quantity)! * num(price)! * 1_000_000) / 1_000_000)
@@ -686,10 +703,15 @@ function TransactionForm({
             }
           />
           <p className="text-ink-muted mt-1.5 text-xs">
-            {transaction
-              ? `Corrígela si el depósito se registró con otra tasa: cambia cuánto entró a la cartera en ${baseCurrency}.`
-              : `La TRM que regía el día del depósito, no la de hoy: es la que fija cuánto entró a la cartera en ${baseCurrency}.`}
+            La TRM del momento del depósito, no la de hoy. Si la dejas sin resolver, el
+            backend aplica la más reciente y el efectivo queda inflado frente a la
+            compra que financió.
           </p>
+          {trmPreview && (
+            <p className="text-ink mt-1 text-xs">
+              Aporta a la cartera: <span className="tabular">{trmPreview}</span>
+            </p>
+          )}
           {latestQuote && (
             <p className="text-ink-muted mt-1 text-xs">
               Última TRM oficial: {latestQuote.value.toLocaleString('es-CO')} (desde{' '}
