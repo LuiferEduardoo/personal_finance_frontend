@@ -175,7 +175,7 @@ export function InvestmentOverviewPage() {
       >
         <Metric
           label="Valor actual"
-          value={money(returns?.endingValue ?? lastPoint?.totalValue)}
+          value={money(summary.marketValue + summary.cash)}
         />
         <Metric
           label="Capital aportado"
@@ -201,7 +201,7 @@ export function InvestmentOverviewPage() {
           label="Dividendos"
           value={money(returns?.dividends ?? lastPoint?.dividends)}
         />
-        <Metric label="Efectivo" value={money(lastPoint?.cash)} />
+        <Metric label="Efectivo" value={money(summary.cash)} />
       </div>
 
       <section className="border-border bg-surface-raised mt-5 rounded-xl border p-4">
