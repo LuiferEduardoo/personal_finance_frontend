@@ -67,6 +67,11 @@ const SettingsPage = lazy(() =>
     default: module.SettingsPage,
   })),
 )
+const MailSettingsPage = lazy(() =>
+  import('@/features/mail/MailSettingsPage').then((module) => ({
+    default: module.MailSettingsPage,
+  })),
+)
 const ApiKeysPage = lazy(() =>
   import('@/features/api-keys/ApiKeysPage').then((module) => ({
     default: module.ApiKeysPage,
@@ -239,6 +244,15 @@ export const router = createBrowserRouter([
             element: (
               <Lazy>
                 <SettingsPage />
+              </Lazy>
+            ),
+          },
+          {
+            // Google vuelve exactamente a esta ruta después del consentimiento.
+            path: '/settings/mail',
+            element: (
+              <Lazy>
+                <MailSettingsPage />
               </Lazy>
             ),
           },

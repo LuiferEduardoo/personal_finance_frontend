@@ -1,6 +1,7 @@
 import { useMutation } from '@apollo/client'
 import QRCode from 'qrcode'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
 import { Button } from '@/components/Button'
 import { Field } from '@/components/Field'
 import { useSession } from '@/features/auth/SessionContext'
@@ -124,6 +125,23 @@ export function SettingsPage() {
           </form>
         </section>
       )}
+
+      <section className="border-border bg-surface-raised mt-6 rounded-lg border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-ink font-semibold">Facturas por correo</h2>
+            <p className="text-ink-secondary mt-1 text-sm">
+              Conecta Gmail para registrar automáticamente facturas electrónicas.
+            </p>
+          </div>
+          <Link
+            to="/settings/mail"
+            className="border-border bg-surface-raised text-ink hover:bg-surface-sunken inline-flex min-h-11 items-center rounded-lg border px-4 text-sm font-medium"
+          >
+            Administrar correo
+          </Link>
+        </div>
+      </section>
 
       <section className="border-border bg-surface-raised mt-6 rounded-lg border p-4">
         <h2 className="text-ink font-semibold">Contraseña</h2>

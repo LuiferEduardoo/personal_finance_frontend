@@ -512,7 +512,7 @@ export type CreateInvestmentTransactionInput = {
   /** Moneda de la operación (ISO 4217) */
   currency?: InputMaybe<Scalars['String']['input']>;
   fee?: InputMaybe<Scalars['Float']['input']>;
-  /** Tasa de cambio a la moneda base del usuario */
+  /** Tasa de cambio a la moneda base del usuario. Si se omite, se calcula automáticamente. */
   fxRate?: InputMaybe<Scalars['Float']['input']>;
   /** Obligatorio en BUY, SELL, SPLIT, TRANSFER_IN y TRANSFER_OUT */
   instrumentId?: InputMaybe<Scalars['ID']['input']>;
@@ -537,6 +537,20 @@ export type CreateInvestmentTransactionInput = {
   splitRatioNumerator?: InputMaybe<Scalars['Int']['input']>;
   tax?: InputMaybe<Scalars['Float']['input']>;
   type: InvestmentTransactionType;
+};
+
+export type CreateMailSenderInput = {
+  /** Si se indica (YYYY-MM-DD), al crear el remitente se leen sus correos desde esa fecha */
+  backfillFrom?: InputMaybe<Scalars['String']['input']>;
+  /** Buzón del que se leen sus correos */
+  connectionId: Scalars['ID']['input'];
+  /** Cuenta de la que sale el dinero por defecto */
+  defaultAccountId?: InputMaybe<Scalars['ID']['input']>;
+  defaultCategoryId?: InputMaybe<Scalars['ID']['input']>;
+  /** Dirección que envía las facturas */
+  emailAddress: Scalars['String']['input'];
+  /** Nombre del comercio con el que se registra el gasto */
+  merchantName: Scalars['String']['input'];
 };
 
 export type CreateRecurringExpenseInput = {
@@ -863,10 +877,100 @@ export type LoginInput = {
   twoFactorCode?: InputMaybe<Scalars['String']['input']>;
 };
 
+/** Estado de la lectura de correos antiguos de un remitente */
+export type MailBackfillStatus =
+  | 'DONE'
+  | 'FAILED'
+  | 'IDLE'
+  | 'RUNNING';
+
+export type MailConnection = {
+  __typename?: 'MailConnection';
+  createdAt: Scalars['DateTime']['output'];
+  emailAddress: Scalars['String']['output'];
+  /** Si la conexión tiene un token guardado */
+  hasToken: Scalars['Boolean']['output'];
+  id: Scalars['ID']['output'];
+  lastError?: Maybe<Scalars['String']['output']>;
+  lastSyncedAt?: Maybe<Scalars['DateTime']['output']>;
+  provider: MailProvider;
+  status: MailConnectionStatus;
+  /** Versión de clave con la que se cifró */
+  tokenKeyVersion: Scalars['Int']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+  userId: Scalars['ID']['output'];
+  /** Cuándo caduca la suscripción push de Gmail (dura 7 días) */
+  watchExpiresAt?: Maybe<Scalars['DateTime']['output']>;
+};
+
+/** Estado de una conexión con un buzón de correo */
+export type MailConnectionStatus =
+  | 'ACTIVE'
+  | 'DISABLED'
+  | 'ERROR'
+  | 'NEEDS_REAUTH';
+
+export type MailMessage = {
+  __typename?: 'MailMessage';
+  connectionId: Scalars['ID']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  error?: Maybe<Scalars['String']['output']>;
+  expenseId?: Maybe<Scalars['ID']['output']>;
+  gmailMessageId: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  receivedAt?: Maybe<Scalars['DateTime']['output']>;
+  senderId?: Maybe<Scalars['ID']['output']>;
+  status: MailMessageStatus;
+  subject?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
+  userId: Scalars['ID']['output'];
+};
+
+/** Resultado de procesar un correo */
+export type MailMessageStatus =
+  | 'DUPLICATE'
+  | 'FAILED'
+  | 'NO_INVOICE'
+  | 'PROCESSING'
+  | 'REGISTERED';
+
+export type MailMessagesFilterInput = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  senderId?: InputMaybe<Scalars['ID']['input']>;
+  status?: InputMaybe<MailMessageStatus>;
+};
+
+export type MailProvider =
+  | 'GMAIL';
+
+export type MailSender = {
+  __typename?: 'MailSender';
+  active: Scalars['Boolean']['output'];
+  backfillError?: Maybe<Scalars['String']['output']>;
+  /** Desde qué fecha (YYYY-MM-DD) se leen los correos antiguos */
+  backfillFrom?: Maybe<Scalars['String']['output']>;
+  backfillStatus: MailBackfillStatus;
+  connectionId: Scalars['ID']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  defaultAccount?: Maybe<Account>;
+  defaultAccountId?: Maybe<Scalars['ID']['output']>;
+  defaultCategory?: Maybe<Category>;
+  defaultCategoryId?: Maybe<Scalars['ID']['output']>;
+  /** Dirección del remitente, en minúsculas */
+  emailAddress: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** Nombre del comercio con el que se registra el gasto */
+  merchantName: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+  userId: Scalars['ID']['output'];
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   /** Registra la operación correspondiente a una acción corporativa que confirmes que te falta */
   applyCorporateAction: InvestmentTransaction;
+  /** Lee los correos antiguos del remitente (desde `since`, o desde su backfillFrom, o todos). Corre en segundo plano: el avance se ve en backfillStatus y en mailMessages. Es idempotente: las facturas ya registradas no se duplican. */
+  backfillMailSender: MailSender;
   beginTwoFactorSetup: TwoFactorSetup;
   changePassword: Scalars['Boolean']['output'];
   confirmTwoFactorSetup: Scalars['Boolean']['output'];
@@ -884,11 +988,17 @@ export type Mutation = {
   createInvestmentAccount: InvestmentAccount;
   /** Registra una operación. Reconstruye lotes y posiciones en la misma transacción. */
   createInvestmentTransaction: InvestmentTransaction;
+  /** Configura un remitente. Sus facturas se registran solas como gasto en la cuenta por defecto. Con backfillFrom se leen además sus correos desde esa fecha. */
+  createMailSender: MailSender;
   createRecurringExpense: RecurringExpense;
   deleteBrokerConnection: Scalars['Boolean']['output'];
   deleteInvestmentAccount: Scalars['Boolean']['output'];
   deleteInvestmentTransaction: Scalars['Boolean']['output'];
+  /** Deja de leer este remitente. Los gastos ya registrados se conservan. */
+  deleteMailSender: Scalars['Boolean']['output'];
   disableTwoFactor: Scalars['Boolean']['output'];
+  /** Desconecta el buzón: revoca el acceso en Google y borra remitentes y bitácora. Los gastos ya registrados se conservan. */
+  disconnectMailConnection: Scalars['Boolean']['output'];
   login: AuthPayload;
   /** Revoca el refresh token (cierra la sesión) */
   logout: Scalars['Boolean']['output'];
@@ -922,6 +1032,8 @@ export type Mutation = {
   resetPassword: Scalars['Boolean']['output'];
   /** Re-resuelve la tasa de cambio de las operaciones que se guardaron con tasa 1 por no existir todavía caché de tasas. Respeta las tasas escritas a mano. Devuelve cuántas se corrigieron. */
   resolveInvestmentFxRates: Scalars['Int']['output'];
+  /** Reprocesa un correo fallido (p. ej. tras liberar cupo en la tarjeta) */
+  retryMailMessage: MailMessage;
   /** Revoca la key: deja de autenticar de inmediato */
   revokeApiKey: ApiKey;
   /** Vuelve a cifrar las credenciales con la clave actual. Rotación sin cortar el servicio: pon la clave vieja en INVESTMENTS_ENCRYPTION_KEY_PREVIOUS y la nueva en INVESTMENTS_ENCRYPTION_KEY. */
@@ -936,6 +1048,8 @@ export type Mutation = {
   syncAllBrokerConnections: Array<BrokerSyncReport>;
   /** Trae las operaciones del bróker. Es idempotente: resincronizar un periodo ya traído no duplica nada. */
   syncBrokerConnection: BrokerSyncReport;
+  /** Lee ya los correos nuevos del buzón, sin esperar al push ni al job horario */
+  syncMailConnection: Scalars['Boolean']['output'];
   /** Transfiere saldo entre cuentas. Transferir a una cuenta de crédito paga la tarjeta. */
   transferBetweenAccounts: AccountTransfer;
   updateAccount: Account;
@@ -951,6 +1065,7 @@ export type Mutation = {
   updateInstrument: Instrument;
   updateInvestmentAccount: InvestmentAccount;
   updateInvestmentTransaction: InvestmentTransaction;
+  updateMailSender: MailSender;
   updateProduct: Article;
   updateRecurringExpense: RecurringExpense;
   /** Comprueba las credenciales contra el bróker y actualiza el estado de la conexión */
@@ -961,6 +1076,12 @@ export type Mutation = {
 export type MutationApplyCorporateActionArgs = {
   accountId: Scalars['ID']['input'];
   actionId: Scalars['ID']['input'];
+};
+
+
+export type MutationBackfillMailSenderArgs = {
+  id: Scalars['ID']['input'];
+  since?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1030,6 +1151,11 @@ export type MutationCreateInvestmentTransactionArgs = {
 };
 
 
+export type MutationCreateMailSenderArgs = {
+  input: CreateMailSenderInput;
+};
+
+
 export type MutationCreateRecurringExpenseArgs = {
   input: CreateRecurringExpenseInput;
 };
@@ -1050,8 +1176,18 @@ export type MutationDeleteInvestmentTransactionArgs = {
 };
 
 
+export type MutationDeleteMailSenderArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type MutationDisableTwoFactorArgs = {
   code: Scalars['String']['input'];
+};
+
+
+export type MutationDisconnectMailConnectionArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -1146,6 +1282,11 @@ export type MutationResetPasswordArgs = {
 };
 
 
+export type MutationRetryMailMessageArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type MutationRevokeApiKeyArgs = {
   id: Scalars['ID']['input'];
 };
@@ -1162,6 +1303,11 @@ export type MutationSetLotCostBasisArgs = {
 
 
 export type MutationSyncBrokerConnectionArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type MutationSyncMailConnectionArgs = {
   id: Scalars['ID']['input'];
 };
 
@@ -1224,6 +1370,11 @@ export type MutationUpdateInvestmentAccountArgs = {
 
 export type MutationUpdateInvestmentTransactionArgs = {
   input: UpdateInvestmentTransactionInput;
+};
+
+
+export type MutationUpdateMailSenderArgs = {
+  input: UpdateMailSenderInput;
 };
 
 
@@ -1485,6 +1636,8 @@ export type Query = {
   /** Inflación personal sobre los gastos: variación mensual y anual del gasto del usuario */
   expenseInflation: InflationReport;
   expenses: Array<Expense>;
+  /** URL de consentimiento de Google para conectar Gmail (solo lectura). Al aceptar, Google redirige a /mail/google/callback. */
+  gmailAuthUrl: Scalars['String']['output'];
   /** Healthcheck de la API */
   health: Scalars['String']['output'];
   income: Income;
@@ -1506,6 +1659,12 @@ export type Query = {
   investmentTransactionsCount: Scalars['Int']['output'];
   /** Última TRM oficial USD/COP */
   latestTrm: TrmQuote;
+  /** Buzones conectados. El token NUNCA se devuelve: solo hasToken. */
+  mailConnections: Array<MailConnection>;
+  /** Bitácora de correos de remitentes configurados: registrados, duplicados, sin factura o fallidos */
+  mailMessages: Array<MailMessage>;
+  /** Remitentes cuyas facturas electrónicas se leen del correo */
+  mailSenders: Array<MailSender>;
   /** Usuario autenticado (requiere Bearer) */
   me: User;
   /** Dividendos y splits anunciados que te afectaban y NO tienes en el libro. Es una sugerencia: nada se registra solo. */
@@ -1663,6 +1822,16 @@ export type QueryInvestmentTransactionsArgs = {
 
 export type QueryInvestmentTransactionsCountArgs = {
   filter?: InputMaybe<InvestmentTransactionsFilterInput>;
+};
+
+
+export type QueryMailMessagesArgs = {
+  filter?: InputMaybe<MailMessagesFilterInput>;
+};
+
+
+export type QueryMailSendersArgs = {
+  connectionId?: InputMaybe<Scalars['ID']['input']>;
 };
 
 
@@ -1989,6 +2158,15 @@ export type UpdateInvestmentTransactionInput = {
   tax?: InputMaybe<Scalars['Float']['input']>;
 };
 
+export type UpdateMailSenderInput = {
+  active?: InputMaybe<Scalars['Boolean']['input']>;
+  defaultAccountId?: InputMaybe<Scalars['ID']['input']>;
+  defaultCategoryId?: InputMaybe<Scalars['ID']['input']>;
+  emailAddress?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['ID']['input'];
+  merchantName?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type UpdateProductInput = {
   barcode?: InputMaybe<Scalars['String']['input']>;
   brand?: InputMaybe<Scalars['String']['input']>;
@@ -2033,7 +2211,7 @@ export type User = {
   financeBaseCurrency: Scalars['String']['output'];
   firstName: Scalars['String']['output'];
   id: Scalars['ID']['output'];
-  /** Moneda base usada para valorar las inversiones */
+  /** Moneda preferida para mostrar las inversiones */
   investmentBaseCurrency: Scalars['String']['output'];
   isActive: Scalars['Boolean']['output'];
   lastName?: Maybe<Scalars['String']['output']>;
@@ -2481,6 +2659,80 @@ export type SyncAllBrokerConnectionsMutationVariables = Exact<{ [key: string]: n
 
 export type SyncAllBrokerConnectionsMutation = { __typename?: 'Mutation', syncAllBrokerConnections: Array<{ __typename?: 'BrokerSyncReport', connectionId: string, fetched: number, inserted: number, duplicates: number, errors: Array<string>, warnings: Array<string>, partial: boolean }> };
 
+export type MailConnectionsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type MailConnectionsQuery = { __typename?: 'Query', mailConnections: Array<{ __typename?: 'MailConnection', id: string, provider: MailProvider, emailAddress: string, status: MailConnectionStatus, hasToken: boolean, watchExpiresAt?: string | null, lastSyncedAt?: string | null, lastError?: string | null, createdAt: string }> };
+
+export type GmailAuthUrlQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GmailAuthUrlQuery = { __typename?: 'Query', gmailAuthUrl: string };
+
+export type MailSendersQueryVariables = Exact<{
+  connectionId?: InputMaybe<Scalars['ID']['input']>;
+}>;
+
+
+export type MailSendersQuery = { __typename?: 'Query', mailSenders: Array<{ __typename?: 'MailSender', id: string, connectionId: string, emailAddress: string, merchantName: string, defaultAccountId?: string | null, defaultCategoryId?: string | null, active: boolean, backfillFrom?: string | null, backfillStatus: MailBackfillStatus, backfillError?: string | null, createdAt: string, updatedAt: string }> };
+
+export type MailMessagesQueryVariables = Exact<{
+  filter?: InputMaybe<MailMessagesFilterInput>;
+}>;
+
+
+export type MailMessagesQuery = { __typename?: 'Query', mailMessages: Array<{ __typename?: 'MailMessage', id: string, connectionId: string, gmailMessageId: string, senderId?: string | null, subject?: string | null, receivedAt?: string | null, status: MailMessageStatus, error?: string | null, expenseId?: string | null, createdAt: string, updatedAt: string }> };
+
+export type CreateMailSenderMutationVariables = Exact<{
+  input: CreateMailSenderInput;
+}>;
+
+
+export type CreateMailSenderMutation = { __typename?: 'Mutation', createMailSender: { __typename?: 'MailSender', id: string, backfillStatus: MailBackfillStatus } };
+
+export type UpdateMailSenderMutationVariables = Exact<{
+  input: UpdateMailSenderInput;
+}>;
+
+
+export type UpdateMailSenderMutation = { __typename?: 'Mutation', updateMailSender: { __typename?: 'MailSender', id: string, active: boolean } };
+
+export type DeleteMailSenderMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type DeleteMailSenderMutation = { __typename?: 'Mutation', deleteMailSender: boolean };
+
+export type BackfillMailSenderMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+  since?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type BackfillMailSenderMutation = { __typename?: 'Mutation', backfillMailSender: { __typename?: 'MailSender', id: string, backfillStatus: MailBackfillStatus, backfillError?: string | null } };
+
+export type DisconnectMailConnectionMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type DisconnectMailConnectionMutation = { __typename?: 'Mutation', disconnectMailConnection: boolean };
+
+export type SyncMailConnectionMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type SyncMailConnectionMutation = { __typename?: 'Mutation', syncMailConnection: boolean };
+
+export type RetryMailMessageMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type RetryMailMessageMutation = { __typename?: 'Mutation', retryMailMessage: { __typename?: 'MailMessage', id: string, status: MailMessageStatus, error?: string | null, expenseId?: string | null, updatedAt: string } };
+
 export type ProductsQueryVariables = Exact<{
   search?: InputMaybe<Scalars['String']['input']>;
   includeInactive?: InputMaybe<Scalars['Boolean']['input']>;
@@ -2709,6 +2961,17 @@ export const DeleteBrokerConnectionDocument = {"kind":"Document","definitions":[
 export const VerifyBrokerConnectionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"VerifyBrokerConnection"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"verifyBrokerConnection"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"lastError"}}]}}]}}]} as unknown as DocumentNode<VerifyBrokerConnectionMutation, VerifyBrokerConnectionMutationVariables>;
 export const SyncBrokerConnectionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SyncBrokerConnection"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"syncBrokerConnection"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"connectionId"}},{"kind":"Field","name":{"kind":"Name","value":"fetched"}},{"kind":"Field","name":{"kind":"Name","value":"inserted"}},{"kind":"Field","name":{"kind":"Name","value":"duplicates"}},{"kind":"Field","name":{"kind":"Name","value":"errors"}},{"kind":"Field","name":{"kind":"Name","value":"warnings"}},{"kind":"Field","name":{"kind":"Name","value":"partial"}}]}}]}}]} as unknown as DocumentNode<SyncBrokerConnectionMutation, SyncBrokerConnectionMutationVariables>;
 export const SyncAllBrokerConnectionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SyncAllBrokerConnections"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"syncAllBrokerConnections"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"connectionId"}},{"kind":"Field","name":{"kind":"Name","value":"fetched"}},{"kind":"Field","name":{"kind":"Name","value":"inserted"}},{"kind":"Field","name":{"kind":"Name","value":"duplicates"}},{"kind":"Field","name":{"kind":"Name","value":"errors"}},{"kind":"Field","name":{"kind":"Name","value":"warnings"}},{"kind":"Field","name":{"kind":"Name","value":"partial"}}]}}]}}]} as unknown as DocumentNode<SyncAllBrokerConnectionsMutation, SyncAllBrokerConnectionsMutationVariables>;
+export const MailConnectionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"MailConnections"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"mailConnections"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"emailAddress"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"hasToken"}},{"kind":"Field","name":{"kind":"Name","value":"watchExpiresAt"}},{"kind":"Field","name":{"kind":"Name","value":"lastSyncedAt"}},{"kind":"Field","name":{"kind":"Name","value":"lastError"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<MailConnectionsQuery, MailConnectionsQueryVariables>;
+export const GmailAuthUrlDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GmailAuthUrl"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gmailAuthUrl"}}]}}]} as unknown as DocumentNode<GmailAuthUrlQuery, GmailAuthUrlQueryVariables>;
+export const MailSendersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"MailSenders"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"connectionId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"mailSenders"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"connectionId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"connectionId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"connectionId"}},{"kind":"Field","name":{"kind":"Name","value":"emailAddress"}},{"kind":"Field","name":{"kind":"Name","value":"merchantName"}},{"kind":"Field","name":{"kind":"Name","value":"defaultAccountId"}},{"kind":"Field","name":{"kind":"Name","value":"defaultCategoryId"}},{"kind":"Field","name":{"kind":"Name","value":"active"}},{"kind":"Field","name":{"kind":"Name","value":"backfillFrom"}},{"kind":"Field","name":{"kind":"Name","value":"backfillStatus"}},{"kind":"Field","name":{"kind":"Name","value":"backfillError"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<MailSendersQuery, MailSendersQueryVariables>;
+export const MailMessagesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"MailMessages"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"MailMessagesFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"mailMessages"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"connectionId"}},{"kind":"Field","name":{"kind":"Name","value":"gmailMessageId"}},{"kind":"Field","name":{"kind":"Name","value":"senderId"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"receivedAt"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"error"}},{"kind":"Field","name":{"kind":"Name","value":"expenseId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<MailMessagesQuery, MailMessagesQueryVariables>;
+export const CreateMailSenderDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateMailSender"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateMailSenderInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createMailSender"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"backfillStatus"}}]}}]}}]} as unknown as DocumentNode<CreateMailSenderMutation, CreateMailSenderMutationVariables>;
+export const UpdateMailSenderDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateMailSender"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateMailSenderInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateMailSender"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"active"}}]}}]}}]} as unknown as DocumentNode<UpdateMailSenderMutation, UpdateMailSenderMutationVariables>;
+export const DeleteMailSenderDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteMailSender"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteMailSender"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DeleteMailSenderMutation, DeleteMailSenderMutationVariables>;
+export const BackfillMailSenderDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"BackfillMailSender"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"since"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"backfillMailSender"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"since"},"value":{"kind":"Variable","name":{"kind":"Name","value":"since"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"backfillStatus"}},{"kind":"Field","name":{"kind":"Name","value":"backfillError"}}]}}]}}]} as unknown as DocumentNode<BackfillMailSenderMutation, BackfillMailSenderMutationVariables>;
+export const DisconnectMailConnectionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DisconnectMailConnection"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"disconnectMailConnection"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DisconnectMailConnectionMutation, DisconnectMailConnectionMutationVariables>;
+export const SyncMailConnectionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SyncMailConnection"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"syncMailConnection"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<SyncMailConnectionMutation, SyncMailConnectionMutationVariables>;
+export const RetryMailMessageDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RetryMailMessage"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"retryMailMessage"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"error"}},{"kind":"Field","name":{"kind":"Name","value":"expenseId"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<RetryMailMessageMutation, RetryMailMessageMutationVariables>;
 export const ProductsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Products"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"includeInactive"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"products"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"includeInactive"},"value":{"kind":"Variable","name":{"kind":"Name","value":"includeInactive"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"brand"}},{"kind":"Field","name":{"kind":"Name","value":"packageSize"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"barcode"}},{"kind":"Field","name":{"kind":"Name","value":"isConsumable"}},{"kind":"Field","name":{"kind":"Name","value":"isActive"}},{"kind":"Field","name":{"kind":"Name","value":"inStock"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"icon"}}]}}]}}]}}]} as unknown as DocumentNode<ProductsQuery, ProductsQueryVariables>;
 export const ProductStatsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ProductStats"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"productStats"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"articleId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"closedCycles"}},{"kind":"Field","name":{"kind":"Name","value":"avgDaysLasted"}},{"kind":"Field","name":{"kind":"Name","value":"minDaysLasted"}},{"kind":"Field","name":{"kind":"Name","value":"maxDaysLasted"}},{"kind":"Field","name":{"kind":"Name","value":"avgUnitPrice"}},{"kind":"Field","name":{"kind":"Name","value":"lastPurchasedOn"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedDepletionDate"}}]}}]}}]} as unknown as DocumentNode<ProductStatsQuery, ProductStatsQueryVariables>;
 export const ProductPurchasesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ProductPurchases"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"articleId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"productPurchases"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"articleId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"articleId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"purchasedOn"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"}},{"kind":"Field","name":{"kind":"Name","value":"store"}},{"kind":"Field","name":{"kind":"Name","value":"expenseId"}},{"kind":"Field","name":{"kind":"Name","value":"article"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<ProductPurchasesQuery, ProductPurchasesQueryVariables>;
