@@ -12,6 +12,7 @@ export const ArticlesQuery = graphql(`
     articles(search: $search, type: $type, includeInactive: $includeInactive) {
       id
       name
+      invoiceName
       type
       brand
       unit
@@ -36,6 +37,7 @@ export const CreateArticleMutation = graphql(`
     createArticle(input: $input) {
       id
       name
+      invoiceName
       type
       brand
       unit
@@ -49,6 +51,7 @@ export const UpdateArticleMutation = graphql(`
     updateArticle(input: $input) {
       id
       name
+      invoiceName
       type
       brand
       unit

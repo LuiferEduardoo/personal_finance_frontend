@@ -22,6 +22,7 @@ type Article = ArticlesQuery['articles'][number]
 
 const schema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
+  invoiceName: z.string().optional(),
   type: z.enum(['PRODUCT', 'SERVICE', 'OTHER']),
   brand: z.string().optional(),
   unit: z.string().optional(),
@@ -58,6 +59,7 @@ export function ArticleForm({ article, defaultType, onDone }: ArticleFormProps) 
     resolver: zodResolver(schema),
     defaultValues: {
       name: article?.name ?? '',
+      invoiceName: article?.invoiceName ?? '',
       type: article?.type ?? defaultType,
       brand: article?.brand ?? '',
       unit: article?.unit ?? 'UNIT',
@@ -71,6 +73,7 @@ export function ArticleForm({ article, defaultType, onDone }: ArticleFormProps) 
     const optional = (value: string | undefined) => value?.trim() || undefined
     const base = {
       name: values.name,
+      invoiceName: values.invoiceName?.trim() || null,
       type: values.type,
       brand: optional(values.brand),
       unit: (values.unit as UnitOfMeasure) || undefined,
@@ -100,6 +103,16 @@ export function ArticleForm({ article, defaultType, onDone }: ArticleFormProps) 
         error={errors.name?.message}
         {...register('name')}
       />
+
+      <Field
+        label="Nombre en la factura (opcional)"
+        placeholder="ARZ ECONOMIC 450g"
+        error={errors.invoiceName?.message}
+        {...register('invoiceName')}
+      />
+      <p className="text-ink-muted -mt-3 text-xs">
+        Escríbelo tal como lo imprime el comercio para reconocerlo en próximas facturas.
+      </p>
 
       <Select label="Tipo" error={errors.type?.message} {...register('type')}>
         {ARTICLE_TYPE_OPTIONS.map(([value, label]) => (

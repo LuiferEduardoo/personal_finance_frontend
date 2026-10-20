@@ -268,6 +268,11 @@ function ArticleRow({
               <span className="text-ink-muted font-normal"> · {article.brand}</span>
             )}
           </p>
+          {article.invoiceName && (
+            <p className="text-ink-secondary mt-1 text-xs">
+              En factura: <span className="font-medium">{article.invoiceName}</span>
+            </p>
+          )}
           <p className="text-ink-muted mt-0.5 text-xs">
             {formatPackage(article.packageSize, article.unit)}
             {article.category && ` · ${article.category.name}`}
