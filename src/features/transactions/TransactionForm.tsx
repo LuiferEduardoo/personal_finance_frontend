@@ -15,6 +15,7 @@ import { getFirstErrorMessage } from '@/graphql/errors'
 import { todayIso } from '@/lib/dates'
 import { formatAmount } from '@/lib/money'
 import { ExpenseItemsEditor } from './ExpenseItemsEditor'
+import { installmentPreview } from './installments'
 import {
   buildItemsInput,
   isRowComplete,
@@ -44,6 +45,16 @@ const schema = z.object({
   accountId: z.string().optional(),
   counterparty: z.string().optional(),
   notes: z.string().optional(),
+  useInstallments: z.boolean(),
+  installmentCount: z
+    .number()
+    .int('Usa un número entero de cuotas')
+    .min(2, 'Elige al menos 2 cuotas')
+    .max(120, 'El máximo es 120 cuotas'),
+  monthlyInterestRatePercent: z
+    .number()
+    .min(0, 'El interés no puede ser negativo')
+    .max(9999.99, 'El interés supera el máximo permitido'),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -93,6 +104,9 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
       accountId: transaction?.accountId ?? '',
       counterparty: transaction?.counterparty ?? '',
       notes: transaction?.notes ?? '',
+      useInstallments: false,
+      installmentCount: 2,
+      monthlyInterestRatePercent: 0,
     },
   })
 
@@ -110,6 +124,15 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
       ? spendableAmount(selectedAccount)
       : null
   const effectiveAmount = hasItems ? computedAmount : (watch('amount') ?? 0)
+  const useInstallments = !isIncome && !isEditing && watch('useInstallments')
+  const installmentCount = watch('installmentCount')
+  const monthlyInterestRatePercent = watch('monthlyInterestRatePercent')
+  const financing = installmentPreview(
+    effectiveAmount,
+    installmentCount,
+    monthlyInterestRatePercent / 100,
+  )
+  const amountAgainstCredit = useInstallments ? financing.totalAmount : effectiveAmount
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null)
@@ -125,7 +148,11 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
       return
     }
     // Cupo de tarjeta: bloquear antes de enviar (el backend también lo rechaza).
-    if (creditAvailable != null && effectiveAmount > creditAvailable) {
+    if (useInstallments && !values.accountId) {
+      setFormError('Elige la cuenta que financiará la compra.')
+      return
+    }
+    if (creditAvailable != null && amountAgainstCredit > creditAvailable) {
       setFormError(
         `Excede el cupo disponible (${formatAmount(creditAvailable, selectedAccount!.currency)}).`,
       )
@@ -166,6 +193,12 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
         ...commonBase,
         merchant: optional(values.counterparty),
         ...(hasItems ? { items: buildItemsInput(rows) } : { amount: values.amount }),
+        ...(values.useInstallments
+          ? {
+              installmentCount: values.installmentCount,
+              monthlyInterestRate: values.monthlyInterestRatePercent / 100,
+            }
+          : {}),
       }
       // Si algún ítem es de tipo producto, el inventario también cambió por debajo.
       const touchedProduct = rows.some(
@@ -227,6 +260,69 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
         />
       )}
 
+      {!isIncome && !isEditing && (
+        <section className="border-border bg-surface-sunken rounded-xl border p-3 sm:p-4">
+          <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4">
+            <span>
+              <span className="text-ink block text-sm font-medium">
+                Pagar por cuotas
+              </span>
+              <span className="text-ink-muted mt-0.5 block text-xs">
+                Distribuye esta compra en los próximos meses.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              className="accent-ink size-5 shrink-0"
+              {...register('useInstallments')}
+            />
+          </label>
+
+          {useInstallments && (
+            <div className="border-border mt-3 border-t pt-3">
+              <div className="grid grid-cols-2 gap-3">
+                <Field
+                  label="Número de cuotas"
+                  type="number"
+                  inputMode="numeric"
+                  min="2"
+                  max="120"
+                  step="1"
+                  error={errors.installmentCount?.message}
+                  {...register('installmentCount', { valueAsNumber: true })}
+                />
+                <Field
+                  label="Interés mensual (%)"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="any"
+                  placeholder="0"
+                  error={errors.monthlyInterestRatePercent?.message}
+                  {...register('monthlyInterestRatePercent', {
+                    valueAsNumber: true,
+                  })}
+                />
+              </div>
+
+              {effectiveAmount > 0 && (
+                <div className="border-border bg-surface-raised mt-3 rounded-lg border px-3 py-2.5">
+                  <p className="text-ink text-sm font-medium">
+                    {installmentCount} cuotas de aproximadamente{' '}
+                    {formatAmount(financing.regularPayment, currency)}
+                  </p>
+                  <p className="text-ink-muted mt-1 text-xs">
+                    Total financiado: {formatAmount(financing.totalAmount, currency)}
+                    {financing.totalInterest > 0 &&
+                      ` · Intereses: ${formatAmount(financing.totalInterest, currency)}`}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
       <Field
         label="Fecha"
         type="date"
@@ -238,12 +334,18 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
         <AccountSelect
           value={watch('accountId') ?? ''}
           onChange={(accountId) => setValue('accountId', accountId)}
-          label={isIncome ? 'Cuenta destino (opcional)' : 'Cuenta (opcional)'}
+          label={
+            isIncome
+              ? 'Cuenta destino (opcional)'
+              : useInstallments
+                ? 'Cuenta que financia la compra'
+                : 'Cuenta (opcional)'
+          }
         />
         {creditAvailable != null && (
           <p
             className={`mt-1 text-xs ${
-              effectiveAmount > creditAvailable ? 'text-expense' : 'text-ink-muted'
+              amountAgainstCredit > creditAvailable ? 'text-expense' : 'text-ink-muted'
             }`}
           >
             Cupo disponible: {formatAmount(creditAvailable, selectedAccount!.currency)}

@@ -62,8 +62,12 @@ export function TransactionsPage() {
 
   // Eviction (ver src/graphql/cache.ts): el borrado desaparece de todas las
   // páginas, no solo de la lista activa.
-  const [removeExpense] = useMutation(RemoveExpenseMutation, { update: evictMovements })
-  const [removeIncome] = useMutation(RemoveIncomeMutation, { update: evictMovements })
+  const [removeExpense] = useMutation(RemoveExpenseMutation, {
+    update: evictMovements,
+  })
+  const [removeIncome] = useMutation(RemoveIncomeMutation, {
+    update: evictMovements,
+  })
 
   const closeForm = () => {
     setEditing(null)
@@ -75,6 +79,10 @@ export function TransactionsPage() {
     // Borrar es irreversible: se confirma siempre.
     const confirmed = await confirm({
       title: `¿Eliminar "${transaction.description}"?`,
+      message: transaction.installment
+        ? 'Esta cuota pertenece a una compra financiada. Se eliminarán todas las cuotas del plan y se revertirá el saldo completo.'
+        : undefined,
+      confirmLabel: transaction.installment ? 'Eliminar plan' : 'Eliminar',
     })
     if (!confirmed) return
 

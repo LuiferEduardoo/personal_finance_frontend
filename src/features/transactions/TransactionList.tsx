@@ -33,6 +33,9 @@ export function TransactionList({
                 <p className="text-ink truncate text-sm font-medium">
                   {transaction.description}
                 </p>
+                {transaction.installment && (
+                  <InstallmentBadge transaction={transaction} className="mt-1.5" />
+                )}
                 <p className="text-ink-muted mt-0.5 text-xs">
                   {formatDate(transaction.occurredOn)}
                   {transaction.categoryName && ` · ${transaction.categoryName}`}
@@ -49,7 +52,9 @@ export function TransactionList({
               />
             </div>
             <div className="mt-2 flex gap-1">
-              <RowAction onClick={() => onEdit(transaction)}>Editar</RowAction>
+              {!transaction.installment && (
+                <RowAction onClick={() => onEdit(transaction)}>Editar</RowAction>
+              )}
               <RowAction onClick={() => onRemove(transaction)}>Eliminar</RowAction>
             </div>
           </li>
@@ -73,7 +78,12 @@ export function TransactionList({
             {transactions.map((transaction) => (
               <tr key={`${transaction.kind}-${transaction.id}`}>
                 <td className="text-ink px-4 py-3 font-medium">
-                  {transaction.description}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span>{transaction.description}</span>
+                    {transaction.installment && (
+                      <InstallmentBadge transaction={transaction} />
+                    )}
+                  </div>
                   {transaction.counterparty && (
                     <span className="text-ink-muted font-normal">
                       {' '}
@@ -98,7 +108,9 @@ export function TransactionList({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1">
-                    <RowAction onClick={() => onEdit(transaction)}>Editar</RowAction>
+                    {!transaction.installment && (
+                      <RowAction onClick={() => onEdit(transaction)}>Editar</RowAction>
+                    )}
                     <RowAction onClick={() => onRemove(transaction)}>
                       Eliminar
                     </RowAction>
@@ -110,6 +122,26 @@ export function TransactionList({
         </table>
       </div>
     </>
+  )
+}
+
+function InstallmentBadge({
+  transaction,
+  className = '',
+}: {
+  transaction: Transaction
+  className?: string
+}) {
+  const installment = transaction.installment
+  if (!installment) return null
+
+  return (
+    <span
+      className={`border-border bg-surface-sunken text-ink-secondary inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-xs font-medium ${className}`}
+      title={`Capital ${installment.principalAmount.toLocaleString('es-CO')} · Interés ${installment.interestAmount.toLocaleString('es-CO')}`}
+    >
+      Cuota {installment.sequenceNumber} de {installment.installmentCount}
+    </span>
   )
 }
 

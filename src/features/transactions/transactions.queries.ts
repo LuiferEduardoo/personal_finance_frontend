@@ -20,6 +20,20 @@ export const ExpenseFields = graphql(`
     merchant
     notes
     recurrence
+    planId
+    installmentId
+    plan {
+      installmentCount
+      monthlyRate
+      totalAmount
+    }
+    installment {
+      sequenceNumber
+      principalAmount
+      interestAmount
+      amount
+      dueDate
+    }
     accountId
     account {
       id

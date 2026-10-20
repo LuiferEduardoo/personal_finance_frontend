@@ -19,6 +19,7 @@ function transaction(overrides: Partial<Transaction>): Transaction {
     accountId: null,
     accountName: null,
     items: [],
+    installment: null,
     ...overrides,
   }
 }

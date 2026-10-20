@@ -48,6 +48,15 @@ export type Transaction = {
   accountId: string | null
   accountName: string | null
   items: TransactionItem[]
+  installment: {
+    sequenceNumber: number
+    installmentCount: number
+    principalAmount: number
+    interestAmount: number
+    dueDate: string
+    monthlyRate: number
+    totalAmount: number
+  } | null
 }
 
 export function directionOf(kind: Transaction['kind']): MoneyDirection {
@@ -70,6 +79,18 @@ export function expenseToTransaction(expense: Expense): Transaction {
     categoryIcon: expense.category?.icon ?? null,
     accountId: expense.accountId ?? null,
     accountName: expense.account?.name ?? null,
+    installment:
+      expense.installment && expense.plan
+        ? {
+            sequenceNumber: expense.installment.sequenceNumber,
+            installmentCount: expense.plan.installmentCount,
+            principalAmount: expense.installment.principalAmount,
+            interestAmount: expense.installment.interestAmount,
+            dueDate: expense.installment.dueDate,
+            monthlyRate: expense.plan.monthlyRate,
+            totalAmount: expense.plan.totalAmount,
+          }
+        : null,
     items: (expense.items ?? []).map((item) => ({
       id: item.id,
       articleId: item.articleId ?? null,
@@ -102,5 +123,6 @@ export function incomeToTransaction(income: Income): Transaction {
     accountName: income.account?.name ?? null,
     // Los ingresos no llevan ítems.
     items: [],
+    installment: null,
   }
 }

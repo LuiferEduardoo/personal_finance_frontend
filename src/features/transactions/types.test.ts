@@ -14,7 +14,14 @@ const baseExpense = {
   notes: null,
   recurrence: 'ONCE',
   categoryId: 'c1',
-  category: { __typename: 'Category', id: 'c1', name: 'Alimentación', icon: '🍽️' },
+  category: {
+    __typename: 'Category',
+    id: 'c1',
+    name: 'Alimentación',
+    icon: '🍽️',
+  },
+  plan: null,
+  installment: null,
 } as unknown as Expense
 
 const baseIncome = {
@@ -57,5 +64,24 @@ describe('conversión a Transaction', () => {
     const transaction = incomeToTransaction(baseIncome)
     expect(transaction.categoryName).toBeNull()
     expect(transaction.categoryIcon).toBeNull()
+  })
+
+  it('conserva el detalle de una cuota', () => {
+    const expense = {
+      ...baseExpense,
+      plan: { installmentCount: 6, monthlyRate: 0.025, totalAmount: 3_245_000 },
+      installment: {
+        sequenceNumber: 2,
+        principalAmount: 490_000,
+        interestAmount: 50_000,
+        dueDate: '2026-08-15',
+      },
+    } as Expense
+
+    expect(expenseToTransaction(expense).installment).toMatchObject({
+      sequenceNumber: 2,
+      installmentCount: 6,
+      interestAmount: 50_000,
+    })
   })
 })
