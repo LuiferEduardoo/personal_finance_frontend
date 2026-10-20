@@ -23,9 +23,15 @@ describe('buildArticleInput', () => {
       name: 'Jabón',
       type: 'PRODUCT',
       categoryId: 'c1',
+      isOneTime: true,
     })
     expect(input).toEqual({
-      newArticle: { name: 'Jabón', type: 'PRODUCT', categoryId: 'c1' },
+      newArticle: {
+        name: 'Jabón',
+        type: 'PRODUCT',
+        categoryId: 'c1',
+        isOneTime: true,
+      },
     })
     expect(input).not.toHaveProperty('articleId')
   })

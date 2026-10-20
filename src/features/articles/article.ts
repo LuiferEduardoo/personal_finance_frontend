@@ -22,6 +22,7 @@ export type ArticleSelection =
       categoryId: string | null
       unit?: UnitOfMeasure | null
       brand?: string | null
+      isOneTime?: boolean
     }
 
 /**
@@ -39,8 +40,9 @@ export function buildArticleInput(selection: ArticleSelection): {
         name: selection.name,
         type: selection.type,
         categoryId: selection.categoryId ?? undefined,
-        unit: selection.unit ?? undefined,
-        brand: selection.brand?.trim() || undefined,
+        ...(selection.unit ? { unit: selection.unit } : {}),
+        ...(selection.brand?.trim() ? { brand: selection.brand.trim() } : {}),
+        ...(selection.isOneTime ? { isOneTime: true } : {}),
       },
     }
   }

@@ -21,7 +21,7 @@ import { evictInventory } from '@/graphql/cache'
 import { formatDate } from '@/lib/dates'
 import { formatAmount } from '@/lib/money'
 import { ArticleForm } from './ArticleForm'
-import { ArticlesQuery, RemoveArticleMutation } from './articles.queries'
+import { ArticlesQuery, UpdateArticleMutation } from './articles.queries'
 
 type Article = ArticlesQueryType['articles'][number]
 
@@ -54,15 +54,25 @@ export function ArticlesPage() {
   })
   const articles = useMemo(() => data?.articles ?? [], [data?.articles])
 
-  const [removeArticle] = useMutation(RemoveArticleMutation, {
+  const [updateArticle] = useMutation(UpdateArticleMutation, {
     update: evictInventory,
   })
 
   const handleRemove = async (article: Article) => {
-    if (!(await confirm({ title: `¿Eliminar "${article.name}"?` }))) return
+    if (
+      !(await confirm({
+        title: `¿Quitar "${article.name}" de la lista?`,
+        message:
+          'Dejará de aparecer en el catálogo y en los selectores. Sus compras anteriores se conservarán.',
+        confirmLabel: 'Quitar de la lista',
+      }))
+    )
+      return
     setActionError(null)
     try {
-      await removeArticle({ variables: { id: article.id } })
+      await updateArticle({
+        variables: { input: { id: article.id, isActive: false } },
+      })
     } catch (caught) {
       setActionError(getFirstErrorMessage(caught))
     }
@@ -302,7 +312,7 @@ function ArticleRow({
             Se acabó
           </RowAction>
         )}
-        <RowAction onClick={onRemove}>Eliminar</RowAction>
+        <RowAction onClick={onRemove}>Quitar de la lista</RowAction>
       </div>
 
       <Sheet
@@ -388,7 +398,7 @@ function PurchaseHistory({ currency }: { currency: string }) {
             {purchases.slice(0, 10).map((purchase) => (
               <tr key={purchase.id}>
                 <td className="text-ink px-4 py-2.5">{purchase.article.name}</td>
-                <td className="text-ink-secondary px-4 py-2.5 whitespace-nowrap">
+                <td className="text-ink-secondary whitespace-nowrap px-4 py-2.5">
                   {formatDate(purchase.purchasedOn)}
                 </td>
                 <td className="text-ink-secondary px-4 py-2.5">

@@ -77,6 +77,7 @@ export type CreateExpenseItemPayload = {
     unit?: RestUnitOfMeasure
     brand?: string
     categoryId?: string
+    isOneTime?: boolean
   }
   unitPrice: number
   quantity?: number
@@ -170,7 +171,13 @@ function nextKey(): string {
 export function newInvoiceItemRow(): InvoiceItemRow {
   return {
     key: nextKey(),
-    article: { mode: 'new', name: '', type: 'PRODUCT', categoryId: null },
+    article: {
+      mode: 'new',
+      name: '',
+      type: 'PRODUCT',
+      categoryId: null,
+      isOneTime: false,
+    },
     unitPrice: undefined,
     quantity: 1,
     description: null,
@@ -187,6 +194,7 @@ export function rowsFromDraft(draft: ExpenseDraft): InvoiceItemRow[] {
       type: articleTypeFromRest(item.newArticle.type),
       categoryId: null,
       brand: item.newArticle.brand,
+      isOneTime: false,
     },
     unitPrice: item.unitPrice,
     quantity: item.quantity,
@@ -245,6 +253,7 @@ function itemPayload(row: InvoiceItemRow): CreateExpenseItemPayload {
       unit: unitToRest(row.unit),
       ...(article?.brand?.trim() ? { brand: article.brand.trim() } : {}),
       ...(article?.categoryId ? { categoryId: article.categoryId } : {}),
+      ...(article?.isOneTime ? { isOneTime: true } : {}),
     },
   }
 }

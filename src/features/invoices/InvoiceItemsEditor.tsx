@@ -156,6 +156,25 @@ function ItemCard({ row, index, currency, onPatch, onRemove }: ItemCardProps) {
             <p className="text-ink-muted text-xs">Marca leída: {article.brand}</p>
           )}
 
+          <label className="border-border bg-surface-sunken flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3">
+            <input
+              type="checkbox"
+              checked={article.isOneTime ?? false}
+              onChange={(event) =>
+                onPatch({
+                  article: { ...article, isOneTime: event.target.checked },
+                })
+              }
+              className="accent-ink size-4"
+            />
+            <span>
+              <span className="text-ink block text-sm font-medium">Compra única</span>
+              <span className="text-ink-muted block text-xs">
+                No guardar este artículo en el catálogo.
+              </span>
+            </span>
+          </label>
+
           <button
             type="button"
             onClick={() => {

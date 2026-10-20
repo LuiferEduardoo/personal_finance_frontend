@@ -156,6 +156,22 @@ describe('buildExpensePayload', () => {
     expect(item).not.toHaveProperty('newArticle')
   })
 
+  it('conserva la marca de compra única en un artículo nuevo', () => {
+    const row = newInvoiceItemRow()
+    row.article = {
+      mode: 'new',
+      name: 'Decoración para fiesta',
+      type: 'PRODUCT',
+      categoryId: null,
+      isOneTime: true,
+    }
+    row.unitPrice = 25_000
+
+    const [item] = buildExpensePayload(values, [row]).items ?? []
+
+    expect(item?.newArticle?.isOneTime).toBe(true)
+  })
+
   it('no envía campos opcionales vacíos', () => {
     const payload = buildExpensePayload(
       { ...values, amount: 1000, categoryId: '', merchant: '   ', notes: '' },

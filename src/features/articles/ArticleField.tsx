@@ -230,6 +230,21 @@ function NewArticleFields({
         ))}
       </Select>
 
+      <label className="border-border bg-surface-raised flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3">
+        <input
+          type="checkbox"
+          checked={value.isOneTime ?? false}
+          onChange={(event) => onChange({ ...value, isOneTime: event.target.checked })}
+          className="accent-ink size-4"
+        />
+        <span>
+          <span className="text-ink block text-sm font-medium">Compra única</span>
+          <span className="text-ink-muted block text-xs">
+            No guardar este artículo en el catálogo.
+          </span>
+        </span>
+      </label>
+
       <p className="text-ink-muted text-xs">
         Si el tipo es «Producto», el gasto lo añadirá a tu inventario.
       </p>

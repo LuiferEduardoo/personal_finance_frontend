@@ -21,6 +21,7 @@ export const ArticlesQuery = graphql(`
       isConsumable
       inStock
       isActive
+      isOneTime
       notes
       categoryId
       category {
@@ -42,6 +43,7 @@ export const CreateArticleMutation = graphql(`
       brand
       unit
       isActive
+      isOneTime
     }
   }
 `)
@@ -56,6 +58,7 @@ export const UpdateArticleMutation = graphql(`
       brand
       unit
       isActive
+      isOneTime
       notes
       categoryId
     }

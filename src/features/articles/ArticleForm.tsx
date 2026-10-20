@@ -28,6 +28,7 @@ const schema = z.object({
   unit: z.string().optional(),
   categoryId: z.string().optional(),
   notes: z.string().optional(),
+  isOneTime: z.boolean(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -65,6 +66,7 @@ export function ArticleForm({ article, defaultType, onDone }: ArticleFormProps) 
       unit: article?.unit ?? 'UNIT',
       categoryId: article?.categoryId ?? '',
       notes: article?.notes ?? '',
+      isOneTime: article?.isOneTime ?? false,
     },
   })
 
@@ -79,6 +81,7 @@ export function ArticleForm({ article, defaultType, onDone }: ArticleFormProps) 
       unit: (values.unit as UnitOfMeasure) || undefined,
       categoryId: optional(values.categoryId),
       notes: optional(values.notes),
+      isOneTime: values.isOneTime,
     }
 
     try {
@@ -145,6 +148,20 @@ export function ArticleForm({ article, defaultType, onDone }: ArticleFormProps) 
       </Select>
 
       <Field label="Notas (opcional)" {...register('notes')} />
+
+      <label className="border-border bg-surface-sunken flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5">
+        <input
+          type="checkbox"
+          className="accent-ink size-4"
+          {...register('isOneTime')}
+        />
+        <span>
+          <span className="text-ink block text-sm font-medium">Compra única</span>
+          <span className="text-ink-muted block text-xs">
+            Al guardar, saldrá del catálogo pero seguirá en tus gastos anteriores.
+          </span>
+        </span>
+      </label>
 
       {formError && (
         <p role="alert" className="text-expense text-sm">
