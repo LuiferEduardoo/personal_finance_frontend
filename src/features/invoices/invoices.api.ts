@@ -37,12 +37,32 @@ function normalizeDraft(raw: unknown): ExpenseDraft {
     occurredOn: typeof draft.occurredOn === 'string' ? draft.occurredOn : null,
     currency:
       typeof draft.currency === 'string' && draft.currency ? draft.currency : 'COP',
-    amount: typeof draft.amount === 'number' ? draft.amount : null,
+    amount: numberOrNull(draft.amount),
+    total: numberOrNull(draft.total),
+    categoryId: idOrNull(draft.categoryId),
     categorySuggestion:
       typeof draft.categorySuggestion === 'string' ? draft.categorySuggestion : null,
     accountId: null,
     items: items.map(normalizeItem),
+    warnings: Array.isArray(draft.warnings)
+      ? draft.warnings.filter(
+          (warning): warning is string => typeof warning === 'string',
+        )
+      : [],
   }
+}
+
+function numberOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function positiveOrNull(value: unknown): number | null {
+  const number = numberOrNull(value)
+  return number != null && number > 0 ? number : null
+}
+
+function idOrNull(value: unknown): string | null {
+  return typeof value === 'string' && value ? value : null
 }
 
 function normalizeItem(raw: unknown): ExpenseDraftItem {
@@ -55,11 +75,16 @@ function normalizeItem(raw: unknown): ExpenseDraftItem {
       type: (article.type ?? 'product') as RestArticleType,
       unit: (article.unit ?? 'unit') as RestUnitOfMeasure,
       brand: typeof article.brand === 'string' ? article.brand : null,
+      categoryId: idOrNull(article.categoryId),
     },
-    unitPrice: typeof item.unitPrice === 'number' ? item.unitPrice : 0,
+    // Sin precio legible llega `null`, no 0: el usuario debe escribirlo, y un 0
+    // inventado pasaría la validación y registraría la línea gratis.
+    unitPrice: numberOrNull(item.unitPrice),
     // Una línea sin cantidad es una unidad, no cero: un 0 dejaría el subtotal a 0.
     quantity:
       typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1,
+    discount: positiveOrNull(item.discount),
+    lineTotal: numberOrNull(item.lineTotal),
     description: typeof item.description === 'string' ? item.description : null,
   }
 }

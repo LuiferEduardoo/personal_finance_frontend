@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { getApiErrorMessage } from '@/api/http'
 import { Button } from '@/components/Button'
 import { Field } from '@/components/Field'
+import { Money } from '@/components/Money'
 import { Select } from '@/components/Select'
 import { isCreditAccount, spendableAmount } from '@/features/accounts/account'
 import { AccountSelect } from '@/features/accounts/AccountSelect'
@@ -16,11 +17,13 @@ import { todayIso } from '@/lib/dates'
 import { formatAmount } from '@/lib/money'
 import { InvoiceItemsEditor } from './InvoiceItemsEditor'
 import {
+  amountsMatch,
   buildExpensePayload,
   invoiceItemsTotal,
   isInvoiceRowComplete,
   matchCategory,
   rowsFromDraft,
+  warningLines,
   type ExpenseDraft,
   type InvoiceItemRow,
 } from './invoice'
@@ -59,6 +62,10 @@ export function InvoiceReviewForm({
   const apollo = useApolloClient()
   const [rows, setRows] = useState<InvoiceItemRow[]>(() => rowsFromDraft(draft))
   const [formError, setFormError] = useState<string | null>(null)
+  // Los errores por fila se muestran tras el primer intento de envío, no antes:
+  // una fila recién añadida no debe aparecer ya en rojo.
+  const [showRowErrors, setShowRowErrors] = useState(false)
+  const [flaggedLines] = useState(() => warningLines(draft.warnings))
 
   const { categories, tree, loading: loadingCategories } = useCategories('EXPENSE')
   const { accounts } = useAccounts()
@@ -85,11 +92,17 @@ export function InvoiceReviewForm({
     },
   })
 
-  // La sugerencia es texto libre ("mercado"), no un id: se traduce a una
-  // categoría real en cuanto llegan las del usuario, y solo la primera vez para
-  // no pisar lo que el usuario haya elegido después.
+  // Se preselecciona la categoría del clasificador (`categoryId`, un id real)
+  // en cuanto llegan las del usuario, y solo la primera vez para no pisar lo
+  // que el usuario elija después. Sin ella se intenta emparejar el texto libre
+  // obsoleto (`categorySuggestion`) como antes.
   const suggestionApplied = useRef(false)
-  const suggestedId = matchCategory(draft.categorySuggestion, categories)
+  const classifiedId =
+    draft.categoryId && categories.some((category) => category.id === draft.categoryId)
+      ? draft.categoryId
+      : null
+  const suggestedId =
+    classifiedId ?? matchCategory(draft.categorySuggestion, categories)
   useEffect(() => {
     if (suggestionApplied.current || !suggestedId) return
     suggestionApplied.current = true
@@ -101,6 +114,9 @@ export function InvoiceReviewForm({
   // Intl lanza con un código inválido: mientras se escribe, se formatea en COP.
   const currency = /^[A-Za-z]{3}$/.test(rawCurrency) ? rawCurrency.toUpperCase() : 'COP'
   const computedAmount = invoiceItemsTotal(rows)
+  const invoiceTotal = draft.total
+  const totalMismatch =
+    hasItems && invoiceTotal != null && !amountsMatch(computedAmount, invoiceTotal)
   const effectiveAmount = hasItems ? computedAmount : (watch('amount') ?? 0)
 
   const selectedAccount =
@@ -118,7 +134,10 @@ export function InvoiceReviewForm({
       return
     }
     if (hasItems && !rows.every(isInvoiceRowComplete)) {
-      setFormError('Cada ítem necesita nombre de artículo y precio unitario.')
+      setShowRowErrors(true)
+      setFormError(
+        'Hay ítems incompletos: revisa los marcados (artículo, precio unitario, cantidad o descuento).',
+      )
       return
     }
     if (creditAvailable != null && effectiveAmount > creditAvailable) {
@@ -136,9 +155,10 @@ export function InvoiceReviewForm({
       // se invalida a mano lo mismo que evicta el formulario manual (listas,
       // dashboard, inflación y saldos; más el inventario si hubo productos).
       evictMovements(apollo.cache)
-      if (rows.some((row) => row.article.mode !== 'existing')) {
-        evictInventory(apollo.cache)
-      }
+      // Con ítems también se evicta: el clasificador puede asignar categoría a
+      // los artículos nuevos unos segundos después, y así la próxima visita al
+      // catálogo los vuelve a pedir.
+      if (rows.length > 0) evictInventory(apollo.cache)
       onCreated(expense)
     } catch (caught) {
       setFormError(getApiErrorMessage(caught))
@@ -156,11 +176,26 @@ export function InvoiceReviewForm({
       {hasItems ? (
         <div>
           <span className="text-ink-secondary block text-sm font-medium">Importe</span>
-          <p className="tabular text-ink mt-1.5 text-lg font-medium">
-            {formatAmount(computedAmount, currency)}
-          </p>
-          <p className="text-ink-muted mt-0.5 text-xs">
-            Suma de los ítems; lo recalcula el servidor al guardar.
+          <dl className="mt-1.5 flex flex-col gap-1 sm:flex-row sm:gap-6">
+            <div>
+              <dt className="text-ink-muted text-xs">Suma de los ítems</dt>
+              <dd>
+                <Money amount={computedAmount} currency={currency} direction="out" />
+              </dd>
+            </div>
+            {invoiceTotal != null && (
+              <div>
+                <dt className="text-ink-muted text-xs">Total de la factura</dt>
+                <dd>
+                  <Money amount={invoiceTotal} currency={currency} direction="out" />
+                </dd>
+              </div>
+            )}
+          </dl>
+          <p className="text-ink-muted mt-1 text-xs">
+            {totalMismatch
+              ? 'No coinciden: se registrará la suma de los ítems. Revisa precios, cantidades y descuentos.'
+              : 'Se registra la suma de los ítems; la recalcula el servidor al guardar.'}
           </p>
         </div>
       ) : (
@@ -229,15 +264,27 @@ export function InvoiceReviewForm({
             </option>
           ))}
         </Select>
-        {draft.categorySuggestion && (
+        {classifiedId ? (
           <p className="text-ink-muted mt-1 text-xs">
-            La factura sugiere «{draft.categorySuggestion}»
-            {suggestedId ? '.' : ', pero no coincide con ninguna categoría tuya.'}
+            Categoría sugerida a partir de la factura; puedes cambiarla.
           </p>
+        ) : (
+          draft.categorySuggestion && (
+            <p className="text-ink-muted mt-1 text-xs">
+              La factura sugiere «{draft.categorySuggestion}»
+              {suggestedId ? '.' : ', pero no coincide con ninguna categoría tuya.'}
+            </p>
+          )
         )}
       </div>
 
-      <InvoiceItemsEditor rows={rows} onChange={setRows} currency={currency} />
+      <InvoiceItemsEditor
+        rows={rows}
+        onChange={setRows}
+        currency={currency}
+        flaggedLines={flaggedLines}
+        showErrors={showRowErrors}
+      />
 
       <Field
         label="Comercio (opcional)"

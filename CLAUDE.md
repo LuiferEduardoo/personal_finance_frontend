@@ -130,10 +130,14 @@ Tres endpoints fuera de GraphQL, todos 🔒 con el mismo `Authorization: Bearer 
 
 - **Los enums van en minúscula** (`product`, `kg`, `once`), al revés que en GraphQL (`PRODUCT`, `KILOGRAM`, `ONCE`). Se traducen al entrar y al salir en [invoice.ts](src/features/invoices/invoice.ts) para poder reutilizar componentes y etiquetas.
 - Con `FormData` **no se pone `Content-Type`**: el navegador añade el boundary. Imagen JPEG/PNG/WEBP, máx. 10 MB (se valida antes de subir).
-- El borrador lo escribe un LLM: `occurredOn`, `amount` y `categorySuggestion` pueden ser `null` y los enums venir inventados → se normaliza al recibirlo. `categorySuggestion` es **texto libre, no un id**: se empareja contra las categorías del usuario (`matchCategory`, sin acentos ni mayúsculas) y, si no cuadra, se deja sin categoría.
+- El borrador lo escribe un LLM: `occurredOn`, `amount`, `total`, `categoryId` y `unitPrice` pueden ser `null` y los enums venir inventados → se normaliza al recibirlo ([invoices.api.ts](src/features/invoices/invoices.api.ts)).
+- **Categoría**: `categoryId` (gasto) y `newArticle.categoryId` (por ítem) son ids reales que sugiere el clasificador. El del gasto se preselecciona (editable); el del ítem viaja en `newArticle` y se pierde si el usuario vincula la línea a un artículo del catálogo. `categorySuggestion` (texto libre) está **obsoleto**: solo se empareja con `matchCategory` si no llega `categoryId`.
+- **Cuadre**: `warnings` (español) se muestran tal cual arriba del formulario ([InvoiceWarnings.tsx](src/features/invoices/InvoiceWarnings.tsx)); los que empiezan por "Línea N" marcan esa fila. `total` (impreso) se muestra junto a la suma de ítems, y `lineTotal` junto al subtotal de cada línea; ninguno de los dos se envía. Subtotal = `unitPrice × quantity − discount`, y `discount` sí se envía (≤ bruto, o falla la restricción de Postgres).
+- `unitPrice: null` = la factura no lo mostraba → campo vacío y **obligatorio**: bloquea el envío con error en la fila. Nunca se rellena con 0.
 - `accountId` llega siempre `null` y en la pantalla de revisión es **obligatorio** (a diferencia del gasto manual).
 - Al confirmar valen las mismas reglas que en GraphQL: XOR `articleId`/`newArticle` por ítem, `amount` **omitido** si hay ítems, y `items: []` + `amount` si la factura no trae líneas. Nunca se envía `subtotal` ni `userId`.
-- El gasto se crea fuera de Apollo, así que la caché **no se entera sola**: hay que evictar a mano (`evictMovements`, y `evictInventory` si hubo artículos nuevos), igual que hace el formulario manual.
+- El gasto se crea fuera de Apollo, así que la caché **no se entera sola**: hay que evictar a mano (`evictMovements`, y `evictInventory` si hubo ítems), igual que hace el formulario manual.
+- **Clasificación asíncrona**: en `createExpense` (manual) y en Gmail, el backend asigna categoría a los artículos sin ella **unos segundos después** de guardar; la del gasto manual no cambia. Por eso `createExpense` con ítems evicta `articles`/`products` (`evictInventory`) — sin polling: la próxima visita refetchea.
 - Códigos propios: `502` = el modelo falló o la foto es ilegible; `503` = al backend le falta `OPENAI_API_KEY` (error de configuración, no del usuario). El cuerpo de error es `{ statusCode, error, message }`, y solo el `message` de un 4xx se muestra tal cual.
 
 ### Errores

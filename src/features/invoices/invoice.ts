@@ -35,10 +35,19 @@ export type ExpenseDraft = {
   currency: string
   /** `null` cuando la factura trae líneas: el importe es la suma de subtotales. */
   amount: number | null
-  /** Texto libre, NO un id: hay que emparejarlo con las categorías del usuario. */
+  /** Total impreso en la factura. Solo sirve para cuadrar contra la suma de líneas. */
+  total: number | null
+  /** Categoría sugerida por el clasificador: un id real de categoría, o `null`. */
+  categoryId: string | null
+  /**
+   * @deprecated Usa `categoryId`. Texto libre, NO un id: solo se empareja con
+   * las categorías del usuario cuando no llega `categoryId`.
+   */
   categorySuggestion: string | null
   accountId: null
   items: ExpenseDraftItem[]
+  /** Avisos en español cuando una línea o el total no cuadran. Se muestran tal cual. */
+  warnings: string[]
 }
 
 export type ExpenseDraftItem = {
@@ -47,9 +56,16 @@ export type ExpenseDraftItem = {
     type: RestArticleType
     unit: RestUnitOfMeasure
     brand: string | null
+    /** Categoría sugerida para el artículo nuevo (id), o `null`. */
+    categoryId: string | null
   }
-  unitPrice: number
+  /** `null` si la factura no traía ni precio unitario ni total de línea. */
+  unitPrice: number | null
   quantity: number
+  /** Descuento en importe sobre la línea, o `null`. */
+  discount: number | null
+  /** Total impreso de la línea; solo para cuadrar, no se envía. */
+  lineTotal: number | null
   description: string | null
 }
 
@@ -81,6 +97,8 @@ export type CreateExpenseItemPayload = {
   }
   unitPrice: number
   quantity?: number
+  /** Descuento en importe sobre `unitPrice * quantity`. */
+  discount?: number
   description?: string
 }
 
@@ -156,9 +174,19 @@ export type InvoiceItemRow = {
   article: ArticleSelection
   unitPrice: number | undefined
   quantity: number
+  /** Descuento en importe sobre la línea; `undefined` = sin descuento. */
+  discount: number | undefined
   description: string | null
   /** Unidad del artículo nuevo; se muestra y edita aparte de la selección. */
   unit: UnitOfMeasure
+  /**
+   * Número de línea (1-based) en el borrador original, o `null` si la añadió
+   * el usuario. Los `warnings` del backend citan la línea por ese número
+   * ("Línea 2 (...)"), y sigue valiendo aunque se quiten filas.
+   */
+  draftLine: number | null
+  /** Total impreso de la línea, para compararlo con el subtotal; no se envía. */
+  lineTotal: number | null
 }
 
 let counter = 0
@@ -180,45 +208,102 @@ export function newInvoiceItemRow(): InvoiceItemRow {
     },
     unitPrice: undefined,
     quantity: 1,
+    discount: undefined,
     description: null,
     unit: 'UNIT',
+    draftLine: null,
+    lineTotal: null,
   }
 }
 
 export function rowsFromDraft(draft: ExpenseDraft): InvoiceItemRow[] {
-  return draft.items.map((item) => ({
+  return draft.items.map((item, index) => ({
     key: nextKey(),
     article: {
       mode: 'new',
       name: item.newArticle.name,
       type: articleTypeFromRest(item.newArticle.type),
-      categoryId: null,
+      // La sugerencia del clasificador viaja con el artículo NUEVO; si el
+      // usuario lo vincula al catálogo, el modo `existing` ya no la lleva.
+      categoryId: item.newArticle.categoryId,
       brand: item.newArticle.brand,
       isOneTime: false,
     },
-    unitPrice: item.unitPrice,
+    // `null` = la factura no lo mostraba: campo vacío y obligatorio.
+    unitPrice: item.unitPrice ?? undefined,
     quantity: item.quantity,
+    discount: item.discount ?? undefined,
     description: item.description,
     unit: unitFromRest(item.newArticle.unit),
+    draftLine: index + 1,
+    lineTotal: item.lineTotal,
   }))
 }
 
+function isNumber(value: number | undefined): value is number {
+  return value != null && Number.isFinite(value)
+}
+
+/** `unitPrice * quantity - discount`, la misma fórmula que usa el backend. */
 export function invoiceRowSubtotal(row: InvoiceItemRow): number | null {
-  if (row.unitPrice == null || !Number.isFinite(row.unitPrice)) return null
+  if (!isNumber(row.unitPrice)) return null
   if (!Number.isFinite(row.quantity)) return null
-  return row.unitPrice * row.quantity
+  const discount = isNumber(row.discount) ? row.discount : 0
+  return row.unitPrice * row.quantity - discount
 }
 
 export function invoiceItemsTotal(rows: InvoiceItemRow[]): number {
   return rows.reduce((sum, row) => sum + (invoiceRowSubtotal(row) ?? 0), 0)
 }
 
-/** Lista si tiene artículo (existente o con nombre) y precio. */
+/**
+ * Primer problema que impide enviar la fila, o `null` si está lista. El
+ * descuento no puede superar el bruto: el backend lo rechaza con una
+ * restricción de Postgres, cuyo mensaje no debe llegar al usuario.
+ */
+export function invoiceRowError(row: InvoiceItemRow): string | null {
+  if (row.article.mode === 'none') return 'Elige un artículo del catálogo.'
+  if (row.article.mode === 'new' && !row.article.name.trim()) {
+    return 'Escribe el nombre del artículo.'
+  }
+  if (!isNumber(row.unitPrice)) return 'Escribe el precio unitario.'
+  if (row.unitPrice < 0) return 'El precio unitario no puede ser negativo.'
+  if (!(row.quantity > 0)) return 'La cantidad debe ser mayor que 0.'
+  if (row.discount != null) {
+    if (!Number.isFinite(row.discount) || row.discount < 0) {
+      return 'El descuento no puede ser negativo.'
+    }
+    if (row.discount > row.unitPrice * row.quantity) {
+      return 'El descuento no puede superar precio × cantidad.'
+    }
+  }
+  return null
+}
+
+/** Lista si tiene artículo (existente o con nombre), precio y descuento válido. */
 export function isInvoiceRowComplete(row: InvoiceItemRow): boolean {
-  if (row.unitPrice == null || !Number.isFinite(row.unitPrice)) return false
-  if (!(row.quantity > 0)) return false
-  if (row.article.mode === 'existing') return true
-  return row.article.mode === 'new' && row.article.name.trim().length > 0
+  return invoiceRowError(row) === null
+}
+
+/**
+ * ¿Cuadran dos importes? Misma holgura que el backend: la mayor entre 1 y el
+ * 0,5 % del esperado, para absorber redondeos sin tapar errores de lectura.
+ */
+export function amountsMatch(actual: number, expected: number): boolean {
+  return Math.abs(actual - expected) <= Math.max(1, Math.abs(expected) * 0.005)
+}
+
+/**
+ * Líneas del borrador que citan los avisos ("Línea 3 (...)": ...). Sirve para
+ * resaltar la fila; el texto del aviso se muestra siempre completo arriba.
+ */
+export function warningLines(warnings: string[]): Set<number> {
+  const lines = new Set<number>()
+  for (const warning of warnings) {
+    const match = /^L[ií]nea (\d+)\b/.exec(warning)
+    if (match?.[1]) lines.add(Number(match[1]))
+  }
+  return lines
 }
 
 export type InvoiceFormValues = {
@@ -237,6 +322,7 @@ function itemPayload(row: InvoiceItemRow): CreateExpenseItemPayload {
   const base = {
     unitPrice: row.unitPrice ?? 0,
     quantity: row.quantity,
+    ...(row.discount != null && row.discount > 0 ? { discount: row.discount } : {}),
     ...(row.description?.trim() ? { description: row.description.trim() } : {}),
   }
 

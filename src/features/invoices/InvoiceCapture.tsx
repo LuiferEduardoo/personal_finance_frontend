@@ -173,7 +173,8 @@ export function InvoiceCapture({
       </Button>
 
       <p className="text-ink-muted text-xs">
-        Lo que se lea es un borrador: podrás corregirlo antes de registrar el gasto.
+        Lo que se lea es un borrador, con una categoría sugerida y avisos si algo no
+        cuadra: podrás corregirlo antes de registrar el gasto.
       </p>
     </div>
   )

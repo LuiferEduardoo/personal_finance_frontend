@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Field } from '@/components/Field'
+import { Money } from '@/components/Money'
 import { Select } from '@/components/Select'
 import { ArticleField } from '@/features/articles/ArticleField'
 import {
@@ -8,9 +9,10 @@ import {
 } from '@/features/articles/article'
 import { UNIT_OPTIONS } from '@/features/products/units'
 import type { ArticleType, UnitOfMeasure } from '@/graphql/generated/graphql'
-import { formatAmount } from '@/lib/money'
 import {
+  amountsMatch,
   invoiceItemsTotal,
+  invoiceRowError,
   invoiceRowSubtotal,
   newInvoiceItemRow,
   type InvoiceItemRow,
@@ -20,6 +22,10 @@ type InvoiceItemsEditorProps = {
   rows: InvoiceItemRow[]
   onChange: (rows: InvoiceItemRow[]) => void
   currency: string
+  /** Líneas del borrador citadas por algún aviso del backend. */
+  flaggedLines: Set<number>
+  /** Mostrar el error de cada fila (tras un intento de envío). */
+  showErrors: boolean
 }
 
 /**
@@ -34,6 +40,8 @@ export function InvoiceItemsEditor({
   rows,
   onChange,
   currency,
+  flaggedLines,
+  showErrors,
 }: InvoiceItemsEditorProps) {
   const patch = (key: string, changes: Partial<InvoiceItemRow>) =>
     onChange(rows.map((row) => (row.key === key ? { ...row, ...changes } : row)))
@@ -43,8 +51,14 @@ export function InvoiceItemsEditor({
       <div className="flex items-center justify-between gap-2">
         <span className="text-ink text-sm font-medium">Ítems de la factura</span>
         {rows.length > 0 && (
-          <span className="tabular text-ink-secondary text-sm">
-            Total: {formatAmount(invoiceItemsTotal(rows), currency)}
+          <span className="text-ink-secondary inline-flex items-center gap-1 text-sm">
+            Total:
+            <Money
+              amount={invoiceItemsTotal(rows)}
+              currency={currency}
+              direction="out"
+              size="sm"
+            />
           </span>
         )}
       </div>
@@ -61,6 +75,8 @@ export function InvoiceItemsEditor({
           row={row}
           index={index}
           currency={currency}
+          flagged={row.draftLine != null && flaggedLines.has(row.draftLine)}
+          error={showErrors ? invoiceRowError(row) : null}
           onPatch={(changes) => patch(row.key, changes)}
           onRemove={() => onChange(rows.filter((other) => other.key !== row.key))}
         />
@@ -81,11 +97,23 @@ type ItemCardProps = {
   row: InvoiceItemRow
   index: number
   currency: string
+  /** Algún aviso del backend cita esta línea. */
+  flagged: boolean
+  /** Lo que impide enviarla, o `null`. */
+  error: string | null
   onPatch: (changes: Partial<InvoiceItemRow>) => void
   onRemove: () => void
 }
 
-function ItemCard({ row, index, currency, onPatch, onRemove }: ItemCardProps) {
+function ItemCard({
+  row,
+  index,
+  currency,
+  flagged,
+  error,
+  onPatch,
+  onRemove,
+}: ItemCardProps) {
   /**
    * Lo que la factura decía antes de ponerse a buscar en el catálogo. Sin esto,
    * abrir el buscador y arrepentirse borraría el nombre que leyó el modelo.
@@ -95,11 +123,26 @@ function ItemCard({ row, index, currency, onPatch, onRemove }: ItemCardProps) {
   const subtotal = invoiceRowSubtotal(row)
   // Alias para que TypeScript estreche el modo dentro del JSX.
   const article = row.article
+  const missingPrice = row.unitPrice == null
+  const lineMismatch =
+    subtotal != null && row.lineTotal != null && !amountsMatch(subtotal, row.lineTotal)
 
   return (
-    <div className="border-border rounded-lg border p-3">
+    <div
+      className={`rounded-lg border p-3 ${
+        error ? 'border-expense' : flagged ? 'border-warning' : 'border-border'
+      }`}
+    >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-ink-secondary text-xs font-medium">Ítem {index + 1}</span>
+        <span className="text-ink-secondary flex flex-wrap items-center gap-2 text-xs font-medium">
+          Ítem {index + 1}
+          {flagged && (
+            // El texto lleva el significado; el color solo lo refuerza.
+            <span className="bg-warning/10 text-ink rounded px-1.5 py-0.5">
+              Línea {row.draftLine} con aviso
+            </span>
+          )}
+        </span>
         <button
           type="button"
           onClick={onRemove}
@@ -207,14 +250,17 @@ function ItemCard({ row, index, currency, onPatch, onRemove }: ItemCardProps) {
         </div>
       )}
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Field
           label="Precio unitario"
           type="number"
           inputMode="decimal"
           step="any"
           min="0"
-          placeholder="0"
+          placeholder={missingPrice ? 'Escríbelo' : '0'}
+          required
+          aria-required="true"
+          error={error && missingPrice ? error : undefined}
           value={row.unitPrice ?? ''}
           onChange={(event) =>
             onPatch({
@@ -232,14 +278,41 @@ function ItemCard({ row, index, currency, onPatch, onRemove }: ItemCardProps) {
           value={row.quantity}
           onChange={(event) => onPatch({ quantity: Number(event.target.value) })}
         />
+        <Field
+          label="Descuento"
+          type="number"
+          inputMode="decimal"
+          step="any"
+          min="0"
+          placeholder="0"
+          className="col-span-2 sm:col-span-1"
+          value={row.discount ?? ''}
+          onChange={(event) =>
+            onPatch({
+              discount:
+                event.target.value === '' ? undefined : Number(event.target.value),
+            })
+          }
+        />
       </div>
 
+      {error && !missingPrice && (
+        <p role="alert" className="text-expense mt-2 text-sm">
+          {error}
+        </p>
+      )}
+
       {subtotal != null && (
-        <p className="text-ink-secondary mt-2 text-sm">
-          Subtotal:{' '}
-          <span className="tabular text-ink font-medium">
-            {formatAmount(subtotal, currency)}
-          </span>
+        <p className="text-ink-secondary mt-2 flex flex-wrap items-center gap-1 text-sm">
+          Subtotal:
+          <Money amount={subtotal} currency={currency} direction="out" size="sm" />
+        </p>
+      )}
+      {row.lineTotal != null && (
+        <p className="text-ink-muted mt-1 flex flex-wrap items-center gap-1 text-xs">
+          La factura muestra:
+          <Money amount={row.lineTotal} currency={currency} direction="out" size="sm" />
+          {lineMismatch && <span>(no coincide con el subtotal)</span>}
         </p>
       )}
     </div>

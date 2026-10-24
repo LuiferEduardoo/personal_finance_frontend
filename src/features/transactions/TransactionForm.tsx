@@ -217,7 +217,13 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
       } else {
         await createExpense({
           variables: { input: expenseInput },
-          update,
+          // Con ítems, el backend clasifica en segundo plano los artículos sin
+          // categoría unos segundos después de guardar. Se evicta el catálogo
+          // (sin polling) para que la próxima visita lo vuelva a pedir.
+          update: (cache: ApolloCache<unknown>) => {
+            update(cache)
+            if (hasItems && !touchedProduct) evictInventory(cache)
+          },
         })
       }
       onDone()

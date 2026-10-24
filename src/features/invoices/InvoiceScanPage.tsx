@@ -4,6 +4,7 @@ import { Button } from '@/components/Button'
 import { Money } from '@/components/Money'
 import { InvoiceCapture } from './InvoiceCapture'
 import { InvoiceReviewForm } from './InvoiceReviewForm'
+import { InvoiceWarnings } from './InvoiceWarnings'
 import type { ExpenseDraft } from './invoice'
 import type { CreatedExpense } from './invoices.api'
 
@@ -56,14 +57,18 @@ export function InvoiceScanPage() {
             </div>
           </div>
         ) : draft ? (
-          <InvoiceReviewForm
-            draft={draft}
-            onCancel={startOver}
-            onCreated={(expense) => {
-              setDraft(null)
-              setCreated(expense)
-            }}
-          />
+          <div className="flex flex-col gap-4">
+            {/* Arriba del formulario: lo que no cuadra es lo primero que revisar. */}
+            <InvoiceWarnings warnings={draft.warnings} />
+            <InvoiceReviewForm
+              draft={draft}
+              onCancel={startOver}
+              onCreated={(expense) => {
+                setDraft(null)
+                setCreated(expense)
+              }}
+            />
+          </div>
         ) : (
           <InvoiceCapture onAnalyzed={setDraft} />
         )}
