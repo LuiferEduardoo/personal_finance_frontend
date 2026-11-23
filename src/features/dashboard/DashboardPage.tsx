@@ -1,5 +1,5 @@
 import { useQuery } from '@apollo/client'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Money } from '@/components/Money'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
@@ -7,12 +7,13 @@ import { useSession } from '@/features/auth/SessionContext'
 import { directionOf } from '@/features/transactions/types'
 import { useTransactions } from '@/features/transactions/useTransactions'
 import { getFirstErrorMessage } from '@/graphql/errors'
-import { endOfMonth, formatDate, subtractMonths, todayIso } from '@/lib/dates'
+import { endOfMonth, formatDate, startOfMonth, todayIso, toPeriod } from '@/lib/dates'
 import { toBaseCurrency } from '@/lib/money'
 import { LatestTrmQuery } from '@/features/settings/trm.queries'
 import { CategoryBreakdown } from './CategoryBreakdown'
 import { MonthlyChart } from './MonthlyChart'
 import { StatTile } from './StatTile'
+import { periodRange, type DashboardPeriod } from './period'
 import { monthlySeries, summarize, totalsByCategory } from './summary'
 
 const RANGES = [
@@ -21,21 +22,25 @@ const RANGES = [
   { months: 11, label: '12 meses' },
 ] as const
 
+/** Cuántas categorías se ven antes de agrupar el resto en "Otras". */
+const CATEGORY_LIMIT = 8
+
+const inputClass =
+  'border-border bg-surface-raised text-ink focus:border-ink mt-1 min-h-11 w-full rounded-lg border px-3 text-base outline-none'
+
 type DashboardCurrency = 'COP' | 'USD'
 
 export function DashboardPage() {
   const { user } = useSession()
-  const [months, setMonths] = useState<number>(5)
+  const today = todayIso()
+  const [period, setPeriod] = useState<DashboardPeriod>({ mode: 'recent', months: 5 })
+  const [showAllCategories, setShowAllCategories] = useState(false)
   const [currency, setCurrency] = useState<DashboardCurrency>(() =>
     user?.financeBaseCurrency === 'USD' ? 'USD' : 'COP',
   )
   const trm = useQuery(LatestTrmQuery)
 
-  const today = todayIso()
-  const range = useMemo(
-    () => ({ from: subtractMonths(today, months), to: endOfMonth(today) }),
-    [today, months],
-  )
+  const range = useMemo(() => periodRange(period, today), [period, today])
 
   const { transactions, loading, error } = useTransactions('ALL', range)
 
@@ -94,26 +99,89 @@ export function DashboardPage() {
           <div
             role="group"
             aria-label="Periodo"
-            className="border-border bg-surface-sunken flex gap-1 rounded-lg border p-1"
+            className="border-border bg-surface-sunken flex flex-wrap gap-1 rounded-lg border p-1"
           >
             {RANGES.map((option) => (
-              <button
+              <PeriodButton
                 key={option.months}
-                type="button"
-                aria-pressed={months === option.months}
-                onClick={() => setMonths(option.months)}
-                className={`min-h-10 rounded-md px-3 text-sm font-medium ${
-                  months === option.months
-                    ? 'bg-surface-raised text-ink shadow-sm'
-                    : 'text-ink-secondary'
-                }`}
+                pressed={period.mode === 'recent' && period.months === option.months}
+                onClick={() => setPeriod({ mode: 'recent', months: option.months })}
               >
                 {option.label}
-              </button>
+              </PeriodButton>
             ))}
+            <PeriodButton
+              pressed={period.mode === 'month'}
+              onClick={() => setPeriod({ mode: 'month', month: toPeriod(today) })}
+            >
+              Mes
+            </PeriodButton>
+            <PeriodButton
+              pressed={period.mode === 'range'}
+              onClick={() =>
+                setPeriod({
+                  mode: 'range',
+                  from: startOfMonth(today),
+                  to: endOfMonth(today),
+                })
+              }
+            >
+              Rango
+            </PeriodButton>
           </div>
         </div>
       </div>
+
+      {period.mode === 'month' && (
+        <div className="mt-3 flex justify-end">
+          <label className="text-ink-secondary w-full text-sm sm:w-56">
+            Mes
+            <input
+              type="month"
+              value={period.month}
+              max={toPeriod(today)}
+              onChange={(event) =>
+                // Borrar el campo deja el valor vacío: se ignora para no
+                // consultar un periodo inválido.
+                event.target.value &&
+                setPeriod({ mode: 'month', month: event.target.value })
+              }
+              className={inputClass}
+            />
+          </label>
+        </div>
+      )}
+
+      {period.mode === 'range' && (
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:ml-auto sm:max-w-md">
+          <label className="text-ink-secondary text-sm">
+            Desde
+            <input
+              type="date"
+              value={period.from}
+              onChange={(event) =>
+                event.target.value && setPeriod({ ...period, from: event.target.value })
+              }
+              className={inputClass}
+            />
+          </label>
+          <label className="text-ink-secondary text-sm">
+            Hasta
+            <input
+              type="date"
+              value={period.to}
+              onChange={(event) =>
+                event.target.value && setPeriod({ ...period, to: event.target.value })
+              }
+              className={inputClass}
+            />
+          </label>
+        </div>
+      )}
+
+      <p className="text-ink-muted mt-3 text-right text-xs">
+        {formatDate(range.from)} – {formatDate(range.to)}
+      </p>
 
       {currency !== baseCurrency && usdCopRate && (
         <p className="text-ink-muted mt-3 text-right text-xs">
@@ -191,7 +259,23 @@ export function DashboardPage() {
                 </Link>
               </div>
               <div className="border-border bg-surface-raised mt-3 rounded-lg border p-4">
-                <CategoryBreakdown data={byCategory} currency={currency} />
+                <CategoryBreakdown
+                  data={byCategory}
+                  currency={currency}
+                  limit={showAllCategories ? byCategory.length : CATEGORY_LIMIT}
+                />
+                {byCategory.length > CATEGORY_LIMIT && (
+                  <button
+                    type="button"
+                    aria-expanded={showAllCategories}
+                    onClick={() => setShowAllCategories((shown) => !shown)}
+                    className="text-ink-secondary hover:bg-surface-sunken mt-4 min-h-11 w-full rounded-lg text-sm font-medium underline"
+                  >
+                    {showAllCategories
+                      ? 'Ver menos'
+                      : `Ver todas (${byCategory.length})`}
+                  </button>
+                )}
               </div>
             </section>
           )}
@@ -233,5 +317,26 @@ export function DashboardPage() {
         </>
       )}
     </div>
+  )
+}
+
+type PeriodButtonProps = {
+  pressed: boolean
+  onClick: () => void
+  children: ReactNode
+}
+
+function PeriodButton({ pressed, onClick, children }: PeriodButtonProps) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={`min-h-10 rounded-md px-3 text-sm font-medium ${
+        pressed ? 'bg-surface-raised text-ink shadow-sm' : 'text-ink-secondary'
+      }`}
+    >
+      {children}
+    </button>
   )
 }
