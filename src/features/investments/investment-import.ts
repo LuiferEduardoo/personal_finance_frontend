@@ -91,12 +91,7 @@ export function missingInstruments(
 
   for (const row of rows) {
     const symbol = row.symbol?.trim().toUpperCase()
-    if (
-      !row.needsInstrument ||
-      row.isDuplicate ||
-      row.errors.length > 0 ||
-      !symbol
-    )
+    if (!row.needsInstrument || row.isDuplicate || row.errors.length > 0 || !symbol)
       continue
 
     const existing = bySymbol.get(symbol)

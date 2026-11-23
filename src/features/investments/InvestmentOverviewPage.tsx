@@ -87,19 +87,18 @@ export function InvestmentOverviewPage() {
   const { portfolioSummary: summary } = data
   const latestTrm = trm.data.latestTrm.value
   const displayCurrency = user?.investmentBaseCurrency ?? summary.baseCurrency
-  const factor = trmFactor(
-    summary.baseCurrency,
-    displayCurrency,
-    latestTrm,
-  )
+  const factor = trmFactor(summary.baseCurrency, displayCurrency, latestTrm)
   const money = (value: number | null | undefined) =>
     compactMoney(value == null ? value : value * factor, displayCurrency)
   const displayFactor = (currency: string) =>
     trmFactor(currency, displayCurrency, latestTrm)
   const positionValues = (position: (typeof data.investmentPositions)[number]) => {
-    const marketValue = position.lastPrice == null
-      ? null
-      : position.quantity * position.lastPrice * displayFactor(position.instrument.currency)
+    const marketValue =
+      position.lastPrice == null
+        ? null
+        : position.quantity *
+          position.lastPrice *
+          displayFactor(position.instrument.currency)
     const costBasis =
       position.quantity * position.averageCost * displayFactor(position.currency)
     return {
@@ -393,25 +392,31 @@ export function InvestmentOverviewPage() {
             <tbody>
               {data.investmentPositions.map((position) => {
                 const values = positionValues(position)
-                return <tr key={position.id} className="border-border border-t">
-                  <td className="p-3">
-                    <p className="text-ink font-medium">{position.instrument.symbol}</p>
-                    <p className="text-ink-muted text-xs">{position.instrument.name}</p>
-                  </td>
-                  <td>{position.account.name}</td>
-                  <td className="tabular text-right">
-                    {position.quantity.toLocaleString('es-CO')}
-                  </td>
-                  <td className="tabular text-right">
-                    {compactMoney(values.marketValue, displayCurrency)}
-                  </td>
-                  <td
-                    className={`tabular p-3 text-right ${(values.unrealizedPnl ?? 0) >= 0 ? 'text-income' : 'text-expense'}`}
-                  >
-                    {compactMoney(values.unrealizedPnl, displayCurrency)}
-                    <p className="text-xs">{percent(values.unrealizedReturn)}</p>
-                  </td>
-                </tr>
+                return (
+                  <tr key={position.id} className="border-border border-t">
+                    <td className="p-3">
+                      <p className="text-ink font-medium">
+                        {position.instrument.symbol}
+                      </p>
+                      <p className="text-ink-muted text-xs">
+                        {position.instrument.name}
+                      </p>
+                    </td>
+                    <td>{position.account.name}</td>
+                    <td className="tabular text-right">
+                      {position.quantity.toLocaleString('es-CO')}
+                    </td>
+                    <td className="tabular text-right">
+                      {compactMoney(values.marketValue, displayCurrency)}
+                    </td>
+                    <td
+                      className={`tabular p-3 text-right ${(values.unrealizedPnl ?? 0) >= 0 ? 'text-income' : 'text-expense'}`}
+                    >
+                      {compactMoney(values.unrealizedPnl, displayCurrency)}
+                      <p className="text-xs">{percent(values.unrealizedReturn)}</p>
+                    </td>
+                  </tr>
+                )
               })}
             </tbody>
           </table>
