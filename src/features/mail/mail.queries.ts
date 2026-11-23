@@ -27,10 +27,17 @@ export const MailSendersQuery = graphql(`
     mailSenders(connectionId: $connectionId) {
       id
       connectionId
+      kind
       emailAddress
       merchantName
       defaultAccountId
       defaultCategoryId
+      investmentAccountId
+      investmentAccount {
+        id
+        name
+      }
+      hasAttachmentPassword
       active
       backfillFrom
       backfillStatus
@@ -53,6 +60,7 @@ export const MailMessagesQuery = graphql(`
       status
       error
       expenseId
+      operationsRecorded
       createdAt
       updatedAt
     }
@@ -72,6 +80,13 @@ export const UpdateMailSenderMutation = graphql(`
   mutation UpdateMailSender($input: UpdateMailSenderInput!) {
     updateMailSender(input: $input) {
       id
+      kind
+      emailAddress
+      merchantName
+      defaultAccountId
+      defaultCategoryId
+      investmentAccountId
+      hasAttachmentPassword
       active
     }
   }
@@ -112,7 +127,20 @@ export const RetryMailMessageMutation = graphql(`
       status
       error
       expenseId
+      operationsRecorded
       updatedAt
+    }
+  }
+`)
+
+/** Solo lo que pide el selector del remitente XTB (sin saldos de caja). */
+export const MailInvestmentAccountsQuery = graphql(`
+  query MailInvestmentAccounts {
+    investmentAccounts(includeInactive: false) {
+      id
+      name
+      broker
+      currency
     }
   }
 `)

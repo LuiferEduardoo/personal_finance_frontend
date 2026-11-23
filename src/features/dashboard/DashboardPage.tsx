@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { Money } from '@/components/Money'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { useSession } from '@/features/auth/SessionContext'
+import { BudgetAlertBanner } from '@/features/budgets/BudgetAlertBanner'
 import { directionOf } from '@/features/transactions/types'
 import { useTransactions } from '@/features/transactions/useTransactions'
 import { getFirstErrorMessage } from '@/graphql/errors'
@@ -182,6 +183,8 @@ export function DashboardPage() {
       <p className="text-ink-muted mt-3 text-right text-xs">
         {formatDate(range.from)} – {formatDate(range.to)}
       </p>
+
+      <BudgetAlertBanner />
 
       {currency !== baseCurrency && usdCopRate && (
         <p className="text-ink-muted mt-3 text-right text-xs">

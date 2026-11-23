@@ -1,27 +1,34 @@
 import { useLazyQuery, useMutation, useQuery } from '@apollo/client'
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Button } from '@/components/Button'
 import { useConfirm } from '@/components/ConfirmDialog'
-import { Field } from '@/components/Field'
-import { Select } from '@/components/Select'
+import { Sheet } from '@/components/Sheet'
 import { AccountsQuery } from '@/features/accounts/accounts.queries'
 import { CategoriesQuery } from '@/features/categories/categories.queries'
+import { evictMovements } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
-import type { MailBackfillStatus, MailMessageStatus } from '@/graphql/generated/graphql'
+import type {
+  MailBackfillStatus,
+  MailMessageStatus,
+  MailSenderKind,
+} from '@/graphql/generated/graphql'
+import { formatOperations, SENDER_KIND_SHORT } from './mail-sender'
+import { MailSenderForm, type MailSender } from './MailSenderForm'
 import {
   BackfillMailSenderMutation,
-  CreateMailSenderMutation,
   DeleteMailSenderMutation,
   DisconnectMailConnectionMutation,
   GmailAuthUrlQuery,
   MailConnectionsQuery,
+  MailInvestmentAccountsQuery,
   MailMessagesQuery,
   MailSendersQuery,
   RetryMailMessageMutation,
   SyncMailConnectionMutation,
   UpdateMailSenderMutation,
 } from './mail.queries'
+import { PasswordBadge } from './PasswordBadge'
 
 const MESSAGE_LABELS: Record<MailMessageStatus, string> = {
   PROCESSING: 'Procesando',
@@ -29,6 +36,15 @@ const MESSAGE_LABELS: Record<MailMessageStatus, string> = {
   DUPLICATE: 'Duplicada',
   NO_INVOICE: 'Sin factura',
   FAILED: 'Fallida',
+}
+
+/** Un correo de XTB trae órdenes, no una factura: mismos estados, otras palabras. */
+const XTB_MESSAGE_LABELS: Record<MailMessageStatus, string> = {
+  PROCESSING: 'Procesando',
+  REGISTERED: 'Registrado',
+  DUPLICATE: 'Ya registrado',
+  NO_INVOICE: 'Sin confirmación',
+  FAILED: 'Fallido',
 }
 
 const BACKFILL_LABELS: Record<MailBackfillStatus, string> = {
@@ -51,16 +67,20 @@ export function MailSettingsPage() {
   const categories = useQuery(CategoriesQuery, {
     variables: { kind: 'EXPENSE' },
   })
+  const investmentAccounts = useQuery(MailInvestmentAccountsQuery)
+  const [editingSender, setEditingSender] = useState<MailSender | null>(null)
   const [getAuthUrl, authUrlState] = useLazyQuery(GmailAuthUrlQuery, {
     fetchPolicy: 'network-only',
   })
-  const [createSender, creating] = useMutation(CreateMailSenderMutation)
   const [updateSender] = useMutation(UpdateMailSenderMutation)
   const [deleteSender] = useMutation(DeleteMailSenderMutation)
   const [backfillSender] = useMutation(BackfillMailSenderMutation)
   const [disconnect] = useMutation(DisconnectMailConnectionMutation)
   const [syncConnection] = useMutation(SyncMailConnectionMutation)
-  const [retryMessage] = useMutation(RetryMailMessageMutation)
+  // Reprocesar puede registrar un gasto (factura): saldos, listas y presupuestos.
+  const [retryMessage] = useMutation(RetryMailMessageMutation, {
+    update: evictMovements,
+  })
 
   const refreshMail = async () => {
     await Promise.all([connections.refetch(), senders.refetch(), messages.refetch()])
@@ -80,6 +100,22 @@ export function MailSettingsPage() {
   const activeConnections = connections.data?.mailConnections ?? []
   const senderRows = senders.data?.mailSenders ?? []
   const messageRows = messages.data?.mailMessages ?? []
+  const senderKinds = useMemo(
+    () =>
+      new Map<string, MailSenderKind>(
+        (senders.data?.mailSenders ?? []).map((row) => [row.id, row.kind]),
+      ),
+    [senders.data?.mailSenders],
+  )
+  const formAccounts = useMemo(
+    () => (accounts.data?.accounts ?? []).filter((account) => account.isActive),
+    [accounts.data?.accounts],
+  )
+  const formCategories = useMemo(
+    () => (categories.data?.categories ?? []).filter((item) => item.isActive),
+    [categories.data?.categories],
+  )
+  const formInvestmentAccounts = investmentAccounts.data?.investmentAccounts ?? []
   const isInitialLoading = connections.loading && !connections.data
 
   return (
@@ -215,25 +251,31 @@ export function MailSettingsPage() {
       </section>
 
       {activeConnections.length > 0 && (
-        <SenderForm
-          connections={activeConnections}
-          accounts={accounts.data?.accounts ?? []}
-          categories={(categories.data?.categories ?? []).filter(
-            (item) => item.isActive,
-          )}
-          loading={creating.loading}
-          onSubmit={(input) =>
-            run(
-              async () => {
-                await createSender({ variables: { input } })
+        <section
+          className="border-border bg-surface-raised mt-8 rounded-lg border p-4"
+          aria-labelledby="new-sender-title"
+        >
+          <h2 id="new-sender-title" className="text-ink font-semibold">
+            Agregar remitente
+          </h2>
+          <p className="text-ink-secondary mt-1 text-sm">
+            Solo se descargan mensajes enviados desde direcciones configuradas aquí. Las
+            facturas se registran como gasto; las confirmaciones de XTB, como
+            operaciones en tu cuenta de inversión.
+          </p>
+          <div className="mt-4">
+            <MailSenderForm
+              connections={activeConnections}
+              accounts={formAccounts}
+              categories={formCategories}
+              investmentAccounts={formInvestmentAccounts}
+              onSaved={async (message) => {
+                setNotice(message)
                 await refreshMail()
-              },
-              input.backfillFrom
-                ? 'Remitente creado; iniciamos la lectura histórica.'
-                : 'Remitente creado.',
-            )
-          }
-        />
+              }}
+            />
+          </div>
+        </section>
       )}
 
       <section className="mt-8" aria-labelledby="senders-title">
@@ -241,7 +283,7 @@ export function MailSettingsPage() {
           Remitentes autorizados
         </h2>
         {senderRows.length === 0 ? (
-          <EmptyState text="Agrega la dirección desde la que cada comercio envía sus facturas." />
+          <EmptyState text="Agrega la dirección desde la que cada comercio envía sus facturas o XTB sus confirmaciones." />
         ) : (
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {senderRows.map((sender) => (
@@ -257,6 +299,19 @@ export function MailSettingsPage() {
                     <p className="text-ink-secondary truncate text-sm">
                       {sender.emailAddress}
                     </p>
+                    <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <span className="bg-surface-sunken text-ink-secondary rounded-full px-2.5 py-1 text-xs">
+                        {SENDER_KIND_SHORT[sender.kind]}
+                      </span>
+                      {sender.kind === 'XTB_ORDER_CONFIRMATION' &&
+                        (sender.hasAttachmentPassword ? (
+                          <PasswordBadge />
+                        ) : (
+                          <span className="border-warning/40 text-ink rounded-full border px-2.5 py-1 text-xs">
+                            Falta la contraseña del PDF
+                          </span>
+                        ))}
+                    </p>
                   </div>
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs ${sender.active ? 'bg-income/10 text-income' : 'bg-surface-sunken text-ink-muted'}`}
@@ -264,6 +319,13 @@ export function MailSettingsPage() {
                     {sender.active ? 'Activo' : 'Pausado'}
                   </span>
                 </div>
+                {sender.kind === 'XTB_ORDER_CONFIRMATION' && (
+                  <p className="text-ink-secondary mt-3 text-sm">
+                    {sender.investmentAccount
+                      ? `Cuenta de inversión: ${sender.investmentAccount.name}`
+                      : 'Sin cuenta de inversión: sus correos fallarán hasta asignarla.'}
+                  </p>
+                )}
                 <p className="text-ink-muted mt-3 text-xs">
                   Histórico: {BACKFILL_LABELS[sender.backfillStatus]}
                   {sender.backfillFrom ? ` desde ${sender.backfillFrom}` : ''}
@@ -290,6 +352,9 @@ export function MailSettingsPage() {
                   >
                     {sender.active ? 'Pausar' : 'Activar'}
                   </Button>
+                  <Button variant="secondary" onClick={() => setEditingSender(sender)}>
+                    Editar
+                  </Button>
                   <Button
                     variant="secondary"
                     disabled={sender.backfillStatus === 'RUNNING'}
@@ -309,7 +374,7 @@ export function MailSettingsPage() {
                         if (
                           !(await confirm({
                             title: `¿Eliminar ${sender.merchantName}?`,
-                            message: `Se dejarán de leer las facturas enviadas desde ${sender.emailAddress}.`,
+                            message: `Se dejarán de leer los correos enviados desde ${sender.emailAddress}.`,
                           }))
                         )
                           return
@@ -352,175 +417,90 @@ export function MailSettingsPage() {
         ) : (
           <div className="border-border bg-surface-raised mt-4 overflow-hidden rounded-lg border">
             <ul className="divide-border divide-y">
-              {messageRows.map((message) => (
-                <li
-                  key={message.id}
-                  className="flex flex-wrap items-center justify-between gap-3 p-4"
-                >
-                  <div className="min-w-0">
-                    <p className="text-ink truncate text-sm font-medium">
-                      {message.subject || 'Sin asunto'}
-                    </p>
-                    <p className="text-ink-muted mt-1 text-xs">
-                      {formatDateTime(message.receivedAt ?? message.createdAt)} ·{' '}
-                      {MESSAGE_LABELS[message.status]}
-                    </p>
-                    {message.error && (
-                      <p className="text-expense mt-1 text-xs">{message.error}</p>
+              {messageRows.map((message) => {
+                const isXtb =
+                  (message.senderId && senderKinds.get(message.senderId)) ===
+                    'XTB_ORDER_CONFIRMATION' || message.operationsRecorded != null
+                return (
+                  <li
+                    key={message.id}
+                    className="flex flex-wrap items-center justify-between gap-3 p-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-ink truncate text-sm font-medium">
+                        {message.subject || 'Sin asunto'}
+                      </p>
+                      <p className="text-ink-muted mt-1 text-xs">
+                        {formatDateTime(message.receivedAt ?? message.createdAt)} ·{' '}
+                        {(isXtb ? XTB_MESSAGE_LABELS : MESSAGE_LABELS)[message.status]}
+                        {isXtb && ' · Órdenes XTB'}
+                        {message.operationsRecorded != null &&
+                          ` · ${formatOperations(message.operationsRecorded)}`}
+                      </p>
+                      {message.error && (
+                        <p className="text-expense mt-1 text-xs">{message.error}</p>
+                      )}
+                    </div>
+                    {message.status === 'FAILED' && (
+                      <Button
+                        variant="secondary"
+                        onClick={() =>
+                          void (async () => {
+                            try {
+                              const { data } = await retryMessage({
+                                variables: { id: message.id },
+                              })
+                              await messages.refetch()
+                              const result = data?.retryMailMessage
+                              // Reintentar no garantiza éxito: si vuelve a fallar
+                              // (p. ej. contraseña aún incorrecta) se dice así.
+                              setNotice(
+                                result?.status === 'FAILED'
+                                  ? `Volvió a fallar: ${result.error ?? 'error desconocido'}`
+                                  : result?.operationsRecorded != null
+                                    ? `Correo reprocesado: ${formatOperations(result.operationsRecorded)}.`
+                                    : 'Correo reprocesado.',
+                              )
+                            } catch (error) {
+                              setNotice(getFirstErrorMessage(error))
+                            }
+                          })()
+                        }
+                      >
+                        Reintentar
+                      </Button>
                     )}
-                  </div>
-                  {message.status === 'FAILED' && (
-                    <Button
-                      variant="secondary"
-                      onClick={() =>
-                        void run(async () => {
-                          await retryMessage({ variables: { id: message.id } })
-                          await messages.refetch()
-                        }, 'Correo reprocesado.')
-                      }
-                    >
-                      Reintentar
-                    </Button>
-                  )}
-                </li>
-              ))}
+                  </li>
+                )
+              })}
             </ul>
           </div>
         )}
       </section>
+      <Sheet
+        isOpen={editingSender !== null}
+        onClose={() => setEditingSender(null)}
+        title="Editar remitente"
+      >
+        {editingSender && (
+          <MailSenderForm
+            key={editingSender.id}
+            sender={editingSender}
+            connections={activeConnections}
+            accounts={formAccounts}
+            categories={formCategories}
+            investmentAccounts={formInvestmentAccounts}
+            onCancel={() => setEditingSender(null)}
+            onSaved={async (message) => {
+              setEditingSender(null)
+              setNotice(message)
+              await senders.refetch()
+            }}
+          />
+        )}
+      </Sheet>
       {dialog}
     </main>
-  )
-}
-
-type SenderInput = {
-  connectionId: string
-  emailAddress: string
-  merchantName: string
-  defaultAccountId?: string
-  defaultCategoryId?: string
-  backfillFrom?: string
-}
-
-function SenderForm({
-  connections,
-  accounts,
-  categories,
-  loading,
-  onSubmit,
-}: {
-  connections: ReadonlyArray<{ id: string; emailAddress: string }>
-  accounts: ReadonlyArray<{ id: string; name: string; isActive: boolean }>
-  categories: ReadonlyArray<{ id: string; name: string }>
-  loading: boolean
-  onSubmit: (input: SenderInput) => Promise<boolean>
-}) {
-  const [emailAddress, setEmailAddress] = useState('')
-  const [merchantName, setMerchantName] = useState('')
-  const [connectionId, setConnectionId] = useState(connections[0]?.id ?? '')
-  const [defaultAccountId, setDefaultAccountId] = useState('')
-  const [defaultCategoryId, setDefaultCategoryId] = useState('')
-  const [backfillFrom, setBackfillFrom] = useState('')
-  const activeAccounts = useMemo(
-    () => accounts.filter((account) => account.isActive),
-    [accounts],
-  )
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
-    const saved = await onSubmit({
-      connectionId,
-      emailAddress,
-      merchantName,
-      ...(defaultAccountId ? { defaultAccountId } : {}),
-      ...(defaultCategoryId ? { defaultCategoryId } : {}),
-      ...(backfillFrom ? { backfillFrom } : {}),
-    })
-    if (!saved) return
-    setEmailAddress('')
-    setMerchantName('')
-    setBackfillFrom('')
-  }
-
-  return (
-    <section
-      className="border-border bg-surface-raised mt-8 rounded-lg border p-4"
-      aria-labelledby="new-sender-title"
-    >
-      <h2 id="new-sender-title" className="text-ink font-semibold">
-        Agregar remitente
-      </h2>
-      <p className="text-ink-secondary mt-1 text-sm">
-        Solo se descargan mensajes enviados desde direcciones configuradas aquí.
-      </p>
-      <form
-        className="mt-4 grid gap-4 sm:grid-cols-2"
-        onSubmit={(event) => void submit(event)}
-      >
-        <Select
-          label="Buzón"
-          value={connectionId}
-          onChange={(event) => setConnectionId(event.target.value)}
-          required
-        >
-          {connections.map((connection) => (
-            <option key={connection.id} value={connection.id}>
-              {connection.emailAddress}
-            </option>
-          ))}
-        </Select>
-        <Field
-          label="Correo del remitente"
-          type="email"
-          value={emailAddress}
-          onChange={(event) => setEmailAddress(event.target.value)}
-          placeholder="facturas@comercio.com"
-          required
-        />
-        <Field
-          label="Nombre del comercio"
-          value={merchantName}
-          onChange={(event) => setMerchantName(event.target.value)}
-          required
-        />
-        <Select
-          label="Cuenta predeterminada (opcional)"
-          value={defaultAccountId}
-          onChange={(event) => setDefaultAccountId(event.target.value)}
-        >
-          <option value="">Sin cuenta</option>
-          {activeAccounts.map((account) => (
-            <option key={account.id} value={account.id}>
-              {account.name}
-            </option>
-          ))}
-        </Select>
-        <Select
-          label="Categoría predeterminada (opcional)"
-          value={defaultCategoryId}
-          onChange={(event) => setDefaultCategoryId(event.target.value)}
-        >
-          <option value="">Sin categoría</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </Select>
-        <Field
-          label="Leer correos desde (opcional)"
-          type="date"
-          value={backfillFrom}
-          max={new Date().toISOString().slice(0, 10)}
-          onChange={(event) => setBackfillFrom(event.target.value)}
-        />
-        <div className="sm:col-span-2">
-          <Button type="submit" isLoading={loading}>
-            Guardar remitente
-          </Button>
-        </div>
-      </form>
-    </section>
   )
 }
 

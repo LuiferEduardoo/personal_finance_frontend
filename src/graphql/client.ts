@@ -104,8 +104,12 @@ export const apolloClient = new ApolloClient({
           articles: { keyArgs: ['search', 'type', 'includeInactive'] },
           accounts: { keyArgs: ['includeInactive'] },
           recurringExpenses: { keyArgs: ['includeInactive'] },
+          categoryBudgets: { keyArgs: ['month'] },
         },
       },
+      // El id es el del presupuesto, pero `spent`/`remaining` dependen del mes:
+      // sin el periodo en la clave, ver otro mes pisaría el actual en la caché.
+      CategoryBudgetStatus: { keyFields: ['id', 'period'] },
     },
   }),
 })

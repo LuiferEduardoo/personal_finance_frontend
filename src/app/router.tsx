@@ -62,6 +62,11 @@ const RecurringPage = lazy(() =>
     default: module.RecurringPage,
   })),
 )
+const BudgetsPage = lazy(() =>
+  import('@/features/budgets/BudgetsPage').then((module) => ({
+    default: module.BudgetsPage,
+  })),
+)
 const SettingsPage = lazy(() =>
   import('@/features/settings/SettingsPage').then((module) => ({
     default: module.SettingsPage,
@@ -228,6 +233,14 @@ export const router = createBrowserRouter([
             element: (
               <Lazy>
                 <RecurringPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/presupuestos',
+            element: (
+              <Lazy>
+                <BudgetsPage />
               </Lazy>
             ),
           },

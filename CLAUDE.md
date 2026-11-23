@@ -16,6 +16,8 @@ Funcionalidad que debe cubrir el dashboard:
 - **Inflación**: dos métricas separadas en pestañas — precios (`articleInflation`) y variación de gasto (`expenseInflation`).
 - **Inventario** de artículos tipo `PRODUCT` (`inStock`), historial de compras, ciclos de consumo y predicción.
 - **Escanear factura**: foto o texto pegado → borrador de gasto leído por el backend → revisión → alta ([InvoiceScanPage.tsx](src/features/invoices/InvoiceScanPage.tsx), ruta `/facturas`).
+- **Presupuestos** mensuales por categoría de gasto ([BudgetsPage.tsx](src/features/budgets/BudgetsPage.tsx), ruta `/presupuestos`, en "Organización").
+- **Correo** (Gmail): remitentes de facturas o de confirmaciones de órdenes de XTB ([MailSettingsPage.tsx](src/features/mail/MailSettingsPage.tsx), ruta `/settings/mail`).
 
 ## Modelo de datos: cuentas, gastos multi-ítem, artículos e inventario
 
@@ -31,6 +33,11 @@ Funcionalidad que debe cubrir el dashboard:
 - **Efecto inventario** (verificado): un gasto con un ítem de tipo `PRODUCT` crea/reabre el producto y lo deja `inStock: true` **sin pasar por las mutaciones de producto**. `createExpense`/`updateExpense` evictan `products`/`productStats`/`productPurchases`/`consumptionCycles` cuando algún ítem es producto (`evictInventory` en [TransactionForm.tsx](src/features/transactions/TransactionForm.tsx)).
 - **Recurrentes**: `recurrence` obligatorio y **no puede ser `ONCE`** (`BAD_REQUEST`, verificado); `startOn` obligatorio, `endOn` opcional, `nextRunOn` lo maneja el backend. `runDueRecurringExpenses` genera los vencidos. Sus ítems son `RecurringExpenseItem` (**sin `subtotal`**).
 - **Las dos inflaciones no son comparables**: precios ~IPC (~10 %), gasto porcentajes grandes. Pestañas separadas ([InflationPage.tsx](src/features/inflation/InflationPage.tsx)). `expenseInflation` recibe solo `filter` (no `userId`).
+
+## Presupuestos y correo
+
+- **Presupuestos** (`categoryBudgets(month)`, `setCategoryBudget` = upsert por categoría, `removeCategoryBudget(categoryId)`): solo categorías `EXPENSE`; `spent` incluye subcategorías y viene en **moneda base**, así que el tope se envía siempre en `user.baseCurrency` (si uno quedó en otra moneda se avisa en la tarjeta). El tope es único para todos los meses; `month` solo cambia lo gastado. `setCategoryBudget` devuelve el estado del mes **actual**, no del que se ve → se evicta y refetchea. **`CategoryBudgetStatus.id` es el del presupuesto, igual en todos los meses**: va con `keyFields: ['id', 'period']` en [client.ts](src/graphql/client.ts) o un mes pisaría a otro en caché. `evictMovements` (y `evictCategories`) evictan `categoryBudgets`. Estado en [budget.ts](src/features/budgets/budget.ts): excedido = `exceeded` del backend; "cerca" desde 80 %; color + texto + icono. El Inicio muestra solo un aviso con el conteo de excedidos/cerca del mes actual ([BudgetAlertBanner.tsx](src/features/budgets/BudgetAlertBanner.tsx)), sin cifras para no chocar con el periodo/moneda del dashboard. Los avisos por correo son solo del backend.
+- **Remitentes de correo** con `kind` (`INVOICE` por defecto / `XTB_ORDER_CONFIRMATION`), form en [MailSenderForm.tsx](src/features/mail/MailSenderForm.tsx) (alta y edición). `INVOICE` usa cuenta/categoría por defecto; XTB usa `investmentAccountId` + `attachmentPassword` (el backend no los exige al guardar, pero sin ellos el correo queda `FAILED` → la UI los exige). La contraseña es **solo escritura**: la API solo expone `hasAttachmentPassword`; al editar, vacía = no se envía = se conserva (`null` la borraría). `backfillFrom` solo existe al crear. En la bitácora, XTB muestra `operationsRecorded` (`expenseId` null) y `DUPLICATE` = "ya registrado"; `retryMailMessage` reprocesa `FAILED` e informa si volvió a fallar.
 
 ## Stack
 

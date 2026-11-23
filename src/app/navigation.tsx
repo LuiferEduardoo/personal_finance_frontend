@@ -148,4 +148,14 @@ export const ORGANIZATION_ITEMS: NavItem[] = [
       </svg>
     ),
   },
+  {
+    to: '/presupuestos',
+    label: 'Presupuestos',
+    icon: (
+      <svg {...iconProps}>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 3v9l6.4 6.4" />
+      </svg>
+    ),
+  },
 ]

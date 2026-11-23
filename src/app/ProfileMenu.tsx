@@ -69,6 +69,9 @@ export function ProfileMenu() {
           <MenuLink to="/recurrentes" onClick={close}>
             Gastos recurrentes
           </MenuLink>
+          <MenuLink to="/presupuestos" onClick={close}>
+            Presupuestos
+          </MenuLink>
         </div>
 
         <p className="text-ink-muted px-3 pt-3 pb-1 text-[0.6875rem] font-semibold tracking-wider uppercase">

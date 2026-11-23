@@ -25,7 +25,7 @@ function evictFields(cache: ApolloCache<unknown>, fields: string[]): void {
 
 /**
  * Un gasto o ingreso afecta: las listas de movimientos, el dashboard, las dos
- * inflaciones y el saldo de la cuenta asociada.
+ * inflaciones, el saldo de la cuenta asociada y lo gastado de los presupuestos.
  */
 export function evictMovements(cache: ApolloCache<unknown>): void {
   evictFields(cache, [
@@ -34,7 +34,13 @@ export function evictMovements(cache: ApolloCache<unknown>): void {
     'expenseInflation',
     'articleInflation',
     'accounts',
+    'categoryBudgets',
   ])
+}
+
+/** Presupuestos por categoría (todas sus entradas por mes). */
+export function evictBudgets(cache: ApolloCache<unknown>): void {
+  evictFields(cache, ['categoryBudgets'])
 }
 
 /**
@@ -65,5 +71,6 @@ export function evictRecurring(cache: ApolloCache<unknown>): void {
 
 /** Las categorías se leen con `kind` variable (gasto/ingreso), en varias páginas. */
 export function evictCategories(cache: ApolloCache<unknown>): void {
-  evictFields(cache, ['categories'])
+  // Los presupuestos muestran el nombre de su categoría y desaparecen con ella.
+  evictFields(cache, ['categories', 'categoryBudgets'])
 }

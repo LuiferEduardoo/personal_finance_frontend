@@ -43,6 +43,9 @@ type Documents = {
     "\n  mutation BeginTwoFactor($method: TwoFactorMethod!) {\n    beginTwoFactorSetup(method: $method) {\n      method\n      secret\n      otpauthUri\n    }\n  }\n": typeof types.BeginTwoFactorDocument,
     "\n  mutation ConfirmTwoFactor($method: TwoFactorMethod!, $code: String!) {\n    confirmTwoFactorSetup(method: $method, code: $code)\n  }\n": typeof types.ConfirmTwoFactorDocument,
     "\n  mutation DisableTwoFactor($code: String!) {\n    disableTwoFactor(code: $code)\n  }\n": typeof types.DisableTwoFactorDocument,
+    "\n  query CategoryBudgets($month: String) {\n    categoryBudgets(month: $month) {\n      id\n      period\n      amount\n      currency\n      spent\n      remaining\n      percentage\n      exceeded\n      category {\n        id\n        name\n        icon\n        parentId\n      }\n    }\n  }\n": typeof types.CategoryBudgetsDocument,
+    "\n  mutation SetCategoryBudget($input: SetCategoryBudgetInput!) {\n    setCategoryBudget(input: $input) {\n      id\n      period\n      amount\n      currency\n    }\n  }\n": typeof types.SetCategoryBudgetDocument,
+    "\n  mutation RemoveCategoryBudget($categoryId: ID!) {\n    removeCategoryBudget(categoryId: $categoryId)\n  }\n": typeof types.RemoveCategoryBudgetDocument,
     "\n  query Categories($kind: TransactionKind) {\n    categories(kind: $kind) {\n      id\n      name\n      icon\n      color\n      kind\n      parentId\n      userId\n      isActive\n    }\n  }\n": typeof types.CategoriesDocument,
     "\n  mutation CreateCategory($input: CreateCategoryInput!) {\n    createCategory(input: $input) {\n      id\n      name\n      icon\n      color\n      kind\n      parentId\n      userId\n      isActive\n    }\n  }\n": typeof types.CreateCategoryDocument,
     "\n  mutation UpdateCategory($input: UpdateCategoryInput!) {\n    updateCategory(input: $input) {\n      id\n      name\n      icon\n      color\n      isActive\n    }\n  }\n": typeof types.UpdateCategoryDocument,
@@ -80,15 +83,16 @@ type Documents = {
     "\n  mutation SyncAllBrokerConnections {\n    syncAllBrokerConnections {\n      connectionId\n      fetched\n      inserted\n      duplicates\n      errors\n      warnings\n      partial\n    }\n  }\n": typeof types.SyncAllBrokerConnectionsDocument,
     "\n  query MailConnections {\n    mailConnections {\n      id\n      provider\n      emailAddress\n      status\n      hasToken\n      watchExpiresAt\n      lastSyncedAt\n      lastError\n      createdAt\n    }\n  }\n": typeof types.MailConnectionsDocument,
     "\n  query GmailAuthUrl {\n    gmailAuthUrl\n  }\n": typeof types.GmailAuthUrlDocument,
-    "\n  query MailSenders($connectionId: ID) {\n    mailSenders(connectionId: $connectionId) {\n      id\n      connectionId\n      emailAddress\n      merchantName\n      defaultAccountId\n      defaultCategoryId\n      active\n      backfillFrom\n      backfillStatus\n      backfillError\n      createdAt\n      updatedAt\n    }\n  }\n": typeof types.MailSendersDocument,
-    "\n  query MailMessages($filter: MailMessagesFilterInput) {\n    mailMessages(filter: $filter) {\n      id\n      connectionId\n      gmailMessageId\n      senderId\n      subject\n      receivedAt\n      status\n      error\n      expenseId\n      createdAt\n      updatedAt\n    }\n  }\n": typeof types.MailMessagesDocument,
+    "\n  query MailSenders($connectionId: ID) {\n    mailSenders(connectionId: $connectionId) {\n      id\n      connectionId\n      kind\n      emailAddress\n      merchantName\n      defaultAccountId\n      defaultCategoryId\n      investmentAccountId\n      investmentAccount {\n        id\n        name\n      }\n      hasAttachmentPassword\n      active\n      backfillFrom\n      backfillStatus\n      backfillError\n      createdAt\n      updatedAt\n    }\n  }\n": typeof types.MailSendersDocument,
+    "\n  query MailMessages($filter: MailMessagesFilterInput) {\n    mailMessages(filter: $filter) {\n      id\n      connectionId\n      gmailMessageId\n      senderId\n      subject\n      receivedAt\n      status\n      error\n      expenseId\n      operationsRecorded\n      createdAt\n      updatedAt\n    }\n  }\n": typeof types.MailMessagesDocument,
     "\n  mutation CreateMailSender($input: CreateMailSenderInput!) {\n    createMailSender(input: $input) {\n      id\n      backfillStatus\n    }\n  }\n": typeof types.CreateMailSenderDocument,
-    "\n  mutation UpdateMailSender($input: UpdateMailSenderInput!) {\n    updateMailSender(input: $input) {\n      id\n      active\n    }\n  }\n": typeof types.UpdateMailSenderDocument,
+    "\n  mutation UpdateMailSender($input: UpdateMailSenderInput!) {\n    updateMailSender(input: $input) {\n      id\n      kind\n      emailAddress\n      merchantName\n      defaultAccountId\n      defaultCategoryId\n      investmentAccountId\n      hasAttachmentPassword\n      active\n    }\n  }\n": typeof types.UpdateMailSenderDocument,
     "\n  mutation DeleteMailSender($id: ID!) {\n    deleteMailSender(id: $id)\n  }\n": typeof types.DeleteMailSenderDocument,
     "\n  mutation BackfillMailSender($id: ID!, $since: String) {\n    backfillMailSender(id: $id, since: $since) {\n      id\n      backfillStatus\n      backfillError\n    }\n  }\n": typeof types.BackfillMailSenderDocument,
     "\n  mutation DisconnectMailConnection($id: ID!) {\n    disconnectMailConnection(id: $id)\n  }\n": typeof types.DisconnectMailConnectionDocument,
     "\n  mutation SyncMailConnection($id: ID!) {\n    syncMailConnection(id: $id)\n  }\n": typeof types.SyncMailConnectionDocument,
-    "\n  mutation RetryMailMessage($id: ID!) {\n    retryMailMessage(id: $id) {\n      id\n      status\n      error\n      expenseId\n      updatedAt\n    }\n  }\n": typeof types.RetryMailMessageDocument,
+    "\n  mutation RetryMailMessage($id: ID!) {\n    retryMailMessage(id: $id) {\n      id\n      status\n      error\n      expenseId\n      operationsRecorded\n      updatedAt\n    }\n  }\n": typeof types.RetryMailMessageDocument,
+    "\n  query MailInvestmentAccounts {\n    investmentAccounts(includeInactive: false) {\n      id\n      name\n      broker\n      currency\n    }\n  }\n": typeof types.MailInvestmentAccountsDocument,
     "\n  query Products($search: String, $includeInactive: Boolean) {\n    products(search: $search, includeInactive: $includeInactive) {\n      id\n      name\n      brand\n      packageSize\n      unit\n      barcode\n      isConsumable\n      isActive\n      inStock\n      notes\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n": typeof types.ProductsDocument,
     "\n  query ProductStats {\n    productStats {\n      articleId\n      name\n      closedCycles\n      avgDaysLasted\n      minDaysLasted\n      maxDaysLasted\n      avgUnitPrice\n      lastPurchasedOn\n      estimatedDepletionDate\n    }\n  }\n": typeof types.ProductStatsDocument,
     "\n  query ProductPurchases($articleId: ID) {\n    productPurchases(articleId: $articleId) {\n      id\n      purchasedOn\n      quantity\n      unitPrice\n      totalPrice\n      store\n      expenseId\n      article {\n        id\n        name\n      }\n    }\n  }\n": typeof types.ProductPurchasesDocument,
@@ -146,6 +150,9 @@ const documents: Documents = {
     "\n  mutation BeginTwoFactor($method: TwoFactorMethod!) {\n    beginTwoFactorSetup(method: $method) {\n      method\n      secret\n      otpauthUri\n    }\n  }\n": types.BeginTwoFactorDocument,
     "\n  mutation ConfirmTwoFactor($method: TwoFactorMethod!, $code: String!) {\n    confirmTwoFactorSetup(method: $method, code: $code)\n  }\n": types.ConfirmTwoFactorDocument,
     "\n  mutation DisableTwoFactor($code: String!) {\n    disableTwoFactor(code: $code)\n  }\n": types.DisableTwoFactorDocument,
+    "\n  query CategoryBudgets($month: String) {\n    categoryBudgets(month: $month) {\n      id\n      period\n      amount\n      currency\n      spent\n      remaining\n      percentage\n      exceeded\n      category {\n        id\n        name\n        icon\n        parentId\n      }\n    }\n  }\n": types.CategoryBudgetsDocument,
+    "\n  mutation SetCategoryBudget($input: SetCategoryBudgetInput!) {\n    setCategoryBudget(input: $input) {\n      id\n      period\n      amount\n      currency\n    }\n  }\n": types.SetCategoryBudgetDocument,
+    "\n  mutation RemoveCategoryBudget($categoryId: ID!) {\n    removeCategoryBudget(categoryId: $categoryId)\n  }\n": types.RemoveCategoryBudgetDocument,
     "\n  query Categories($kind: TransactionKind) {\n    categories(kind: $kind) {\n      id\n      name\n      icon\n      color\n      kind\n      parentId\n      userId\n      isActive\n    }\n  }\n": types.CategoriesDocument,
     "\n  mutation CreateCategory($input: CreateCategoryInput!) {\n    createCategory(input: $input) {\n      id\n      name\n      icon\n      color\n      kind\n      parentId\n      userId\n      isActive\n    }\n  }\n": types.CreateCategoryDocument,
     "\n  mutation UpdateCategory($input: UpdateCategoryInput!) {\n    updateCategory(input: $input) {\n      id\n      name\n      icon\n      color\n      isActive\n    }\n  }\n": types.UpdateCategoryDocument,
@@ -183,15 +190,16 @@ const documents: Documents = {
     "\n  mutation SyncAllBrokerConnections {\n    syncAllBrokerConnections {\n      connectionId\n      fetched\n      inserted\n      duplicates\n      errors\n      warnings\n      partial\n    }\n  }\n": types.SyncAllBrokerConnectionsDocument,
     "\n  query MailConnections {\n    mailConnections {\n      id\n      provider\n      emailAddress\n      status\n      hasToken\n      watchExpiresAt\n      lastSyncedAt\n      lastError\n      createdAt\n    }\n  }\n": types.MailConnectionsDocument,
     "\n  query GmailAuthUrl {\n    gmailAuthUrl\n  }\n": types.GmailAuthUrlDocument,
-    "\n  query MailSenders($connectionId: ID) {\n    mailSenders(connectionId: $connectionId) {\n      id\n      connectionId\n      emailAddress\n      merchantName\n      defaultAccountId\n      defaultCategoryId\n      active\n      backfillFrom\n      backfillStatus\n      backfillError\n      createdAt\n      updatedAt\n    }\n  }\n": types.MailSendersDocument,
-    "\n  query MailMessages($filter: MailMessagesFilterInput) {\n    mailMessages(filter: $filter) {\n      id\n      connectionId\n      gmailMessageId\n      senderId\n      subject\n      receivedAt\n      status\n      error\n      expenseId\n      createdAt\n      updatedAt\n    }\n  }\n": types.MailMessagesDocument,
+    "\n  query MailSenders($connectionId: ID) {\n    mailSenders(connectionId: $connectionId) {\n      id\n      connectionId\n      kind\n      emailAddress\n      merchantName\n      defaultAccountId\n      defaultCategoryId\n      investmentAccountId\n      investmentAccount {\n        id\n        name\n      }\n      hasAttachmentPassword\n      active\n      backfillFrom\n      backfillStatus\n      backfillError\n      createdAt\n      updatedAt\n    }\n  }\n": types.MailSendersDocument,
+    "\n  query MailMessages($filter: MailMessagesFilterInput) {\n    mailMessages(filter: $filter) {\n      id\n      connectionId\n      gmailMessageId\n      senderId\n      subject\n      receivedAt\n      status\n      error\n      expenseId\n      operationsRecorded\n      createdAt\n      updatedAt\n    }\n  }\n": types.MailMessagesDocument,
     "\n  mutation CreateMailSender($input: CreateMailSenderInput!) {\n    createMailSender(input: $input) {\n      id\n      backfillStatus\n    }\n  }\n": types.CreateMailSenderDocument,
-    "\n  mutation UpdateMailSender($input: UpdateMailSenderInput!) {\n    updateMailSender(input: $input) {\n      id\n      active\n    }\n  }\n": types.UpdateMailSenderDocument,
+    "\n  mutation UpdateMailSender($input: UpdateMailSenderInput!) {\n    updateMailSender(input: $input) {\n      id\n      kind\n      emailAddress\n      merchantName\n      defaultAccountId\n      defaultCategoryId\n      investmentAccountId\n      hasAttachmentPassword\n      active\n    }\n  }\n": types.UpdateMailSenderDocument,
     "\n  mutation DeleteMailSender($id: ID!) {\n    deleteMailSender(id: $id)\n  }\n": types.DeleteMailSenderDocument,
     "\n  mutation BackfillMailSender($id: ID!, $since: String) {\n    backfillMailSender(id: $id, since: $since) {\n      id\n      backfillStatus\n      backfillError\n    }\n  }\n": types.BackfillMailSenderDocument,
     "\n  mutation DisconnectMailConnection($id: ID!) {\n    disconnectMailConnection(id: $id)\n  }\n": types.DisconnectMailConnectionDocument,
     "\n  mutation SyncMailConnection($id: ID!) {\n    syncMailConnection(id: $id)\n  }\n": types.SyncMailConnectionDocument,
-    "\n  mutation RetryMailMessage($id: ID!) {\n    retryMailMessage(id: $id) {\n      id\n      status\n      error\n      expenseId\n      updatedAt\n    }\n  }\n": types.RetryMailMessageDocument,
+    "\n  mutation RetryMailMessage($id: ID!) {\n    retryMailMessage(id: $id) {\n      id\n      status\n      error\n      expenseId\n      operationsRecorded\n      updatedAt\n    }\n  }\n": types.RetryMailMessageDocument,
+    "\n  query MailInvestmentAccounts {\n    investmentAccounts(includeInactive: false) {\n      id\n      name\n      broker\n      currency\n    }\n  }\n": types.MailInvestmentAccountsDocument,
     "\n  query Products($search: String, $includeInactive: Boolean) {\n    products(search: $search, includeInactive: $includeInactive) {\n      id\n      name\n      brand\n      packageSize\n      unit\n      barcode\n      isConsumable\n      isActive\n      inStock\n      notes\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n": types.ProductsDocument,
     "\n  query ProductStats {\n    productStats {\n      articleId\n      name\n      closedCycles\n      avgDaysLasted\n      minDaysLasted\n      maxDaysLasted\n      avgUnitPrice\n      lastPurchasedOn\n      estimatedDepletionDate\n    }\n  }\n": types.ProductStatsDocument,
     "\n  query ProductPurchases($articleId: ID) {\n    productPurchases(articleId: $articleId) {\n      id\n      purchasedOn\n      quantity\n      unitPrice\n      totalPrice\n      store\n      expenseId\n      article {\n        id\n        name\n      }\n    }\n  }\n": types.ProductPurchasesDocument,
@@ -353,6 +361,18 @@ export function graphql(source: "\n  mutation DisableTwoFactor($code: String!) {
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
+export function graphql(source: "\n  query CategoryBudgets($month: String) {\n    categoryBudgets(month: $month) {\n      id\n      period\n      amount\n      currency\n      spent\n      remaining\n      percentage\n      exceeded\n      category {\n        id\n        name\n        icon\n        parentId\n      }\n    }\n  }\n"): (typeof documents)["\n  query CategoryBudgets($month: String) {\n    categoryBudgets(month: $month) {\n      id\n      period\n      amount\n      currency\n      spent\n      remaining\n      percentage\n      exceeded\n      category {\n        id\n        name\n        icon\n        parentId\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation SetCategoryBudget($input: SetCategoryBudgetInput!) {\n    setCategoryBudget(input: $input) {\n      id\n      period\n      amount\n      currency\n    }\n  }\n"): (typeof documents)["\n  mutation SetCategoryBudget($input: SetCategoryBudgetInput!) {\n    setCategoryBudget(input: $input) {\n      id\n      period\n      amount\n      currency\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RemoveCategoryBudget($categoryId: ID!) {\n    removeCategoryBudget(categoryId: $categoryId)\n  }\n"): (typeof documents)["\n  mutation RemoveCategoryBudget($categoryId: ID!) {\n    removeCategoryBudget(categoryId: $categoryId)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
 export function graphql(source: "\n  query Categories($kind: TransactionKind) {\n    categories(kind: $kind) {\n      id\n      name\n      icon\n      color\n      kind\n      parentId\n      userId\n      isActive\n    }\n  }\n"): (typeof documents)["\n  query Categories($kind: TransactionKind) {\n    categories(kind: $kind) {\n      id\n      name\n      icon\n      color\n      kind\n      parentId\n      userId\n      isActive\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
@@ -501,11 +521,11 @@ export function graphql(source: "\n  query GmailAuthUrl {\n    gmailAuthUrl\n  }
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query MailSenders($connectionId: ID) {\n    mailSenders(connectionId: $connectionId) {\n      id\n      connectionId\n      emailAddress\n      merchantName\n      defaultAccountId\n      defaultCategoryId\n      active\n      backfillFrom\n      backfillStatus\n      backfillError\n      createdAt\n      updatedAt\n    }\n  }\n"): (typeof documents)["\n  query MailSenders($connectionId: ID) {\n    mailSenders(connectionId: $connectionId) {\n      id\n      connectionId\n      emailAddress\n      merchantName\n      defaultAccountId\n      defaultCategoryId\n      active\n      backfillFrom\n      backfillStatus\n      backfillError\n      createdAt\n      updatedAt\n    }\n  }\n"];
+export function graphql(source: "\n  query MailSenders($connectionId: ID) {\n    mailSenders(connectionId: $connectionId) {\n      id\n      connectionId\n      kind\n      emailAddress\n      merchantName\n      defaultAccountId\n      defaultCategoryId\n      investmentAccountId\n      investmentAccount {\n        id\n        name\n      }\n      hasAttachmentPassword\n      active\n      backfillFrom\n      backfillStatus\n      backfillError\n      createdAt\n      updatedAt\n    }\n  }\n"): (typeof documents)["\n  query MailSenders($connectionId: ID) {\n    mailSenders(connectionId: $connectionId) {\n      id\n      connectionId\n      kind\n      emailAddress\n      merchantName\n      defaultAccountId\n      defaultCategoryId\n      investmentAccountId\n      investmentAccount {\n        id\n        name\n      }\n      hasAttachmentPassword\n      active\n      backfillFrom\n      backfillStatus\n      backfillError\n      createdAt\n      updatedAt\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query MailMessages($filter: MailMessagesFilterInput) {\n    mailMessages(filter: $filter) {\n      id\n      connectionId\n      gmailMessageId\n      senderId\n      subject\n      receivedAt\n      status\n      error\n      expenseId\n      createdAt\n      updatedAt\n    }\n  }\n"): (typeof documents)["\n  query MailMessages($filter: MailMessagesFilterInput) {\n    mailMessages(filter: $filter) {\n      id\n      connectionId\n      gmailMessageId\n      senderId\n      subject\n      receivedAt\n      status\n      error\n      expenseId\n      createdAt\n      updatedAt\n    }\n  }\n"];
+export function graphql(source: "\n  query MailMessages($filter: MailMessagesFilterInput) {\n    mailMessages(filter: $filter) {\n      id\n      connectionId\n      gmailMessageId\n      senderId\n      subject\n      receivedAt\n      status\n      error\n      expenseId\n      operationsRecorded\n      createdAt\n      updatedAt\n    }\n  }\n"): (typeof documents)["\n  query MailMessages($filter: MailMessagesFilterInput) {\n    mailMessages(filter: $filter) {\n      id\n      connectionId\n      gmailMessageId\n      senderId\n      subject\n      receivedAt\n      status\n      error\n      expenseId\n      operationsRecorded\n      createdAt\n      updatedAt\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -513,7 +533,7 @@ export function graphql(source: "\n  mutation CreateMailSender($input: CreateMai
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation UpdateMailSender($input: UpdateMailSenderInput!) {\n    updateMailSender(input: $input) {\n      id\n      active\n    }\n  }\n"): (typeof documents)["\n  mutation UpdateMailSender($input: UpdateMailSenderInput!) {\n    updateMailSender(input: $input) {\n      id\n      active\n    }\n  }\n"];
+export function graphql(source: "\n  mutation UpdateMailSender($input: UpdateMailSenderInput!) {\n    updateMailSender(input: $input) {\n      id\n      kind\n      emailAddress\n      merchantName\n      defaultAccountId\n      defaultCategoryId\n      investmentAccountId\n      hasAttachmentPassword\n      active\n    }\n  }\n"): (typeof documents)["\n  mutation UpdateMailSender($input: UpdateMailSenderInput!) {\n    updateMailSender(input: $input) {\n      id\n      kind\n      emailAddress\n      merchantName\n      defaultAccountId\n      defaultCategoryId\n      investmentAccountId\n      hasAttachmentPassword\n      active\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -533,7 +553,11 @@ export function graphql(source: "\n  mutation SyncMailConnection($id: ID!) {\n  
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation RetryMailMessage($id: ID!) {\n    retryMailMessage(id: $id) {\n      id\n      status\n      error\n      expenseId\n      updatedAt\n    }\n  }\n"): (typeof documents)["\n  mutation RetryMailMessage($id: ID!) {\n    retryMailMessage(id: $id) {\n      id\n      status\n      error\n      expenseId\n      updatedAt\n    }\n  }\n"];
+export function graphql(source: "\n  mutation RetryMailMessage($id: ID!) {\n    retryMailMessage(id: $id) {\n      id\n      status\n      error\n      expenseId\n      operationsRecorded\n      updatedAt\n    }\n  }\n"): (typeof documents)["\n  mutation RetryMailMessage($id: ID!) {\n    retryMailMessage(id: $id) {\n      id\n      status\n      error\n      expenseId\n      operationsRecorded\n      updatedAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query MailInvestmentAccounts {\n    investmentAccounts(includeInactive: false) {\n      id\n      name\n      broker\n      currency\n    }\n  }\n"): (typeof documents)["\n  query MailInvestmentAccounts {\n    investmentAccounts(includeInactive: false) {\n      id\n      name\n      broker\n      currency\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
