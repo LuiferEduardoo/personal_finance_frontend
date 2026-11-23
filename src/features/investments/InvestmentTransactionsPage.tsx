@@ -29,11 +29,8 @@ import {
   refineTransactions,
   SERVER_WINDOW,
 } from './transaction-filters'
-import {
-  buildTransactionsWorkbook,
-  downloadBlob,
-  workbookFileName,
-} from './transaction-export'
+import { buildTransactionsWorkbook, workbookFileName } from './transaction-export'
+import { downloadBlob } from '@/lib/download'
 import {
   CreateInvestmentTransactionMutation,
   DeleteInvestmentTransactionMutation,
