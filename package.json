@@ -21,6 +21,8 @@
     "@hookform/resolvers": "^5.2.2",
     "exceljs": "^4.4.0",
     "graphql": "^16.11.0",
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.9",
     "lightweight-charts": "^5.2.1",
     "qrcode": "^1.5.4",
     "react": "^19.2.7",

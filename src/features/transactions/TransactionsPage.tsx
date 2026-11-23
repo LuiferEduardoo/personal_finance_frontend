@@ -5,10 +5,18 @@ import { Button } from '@/components/Button'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { Sheet } from '@/components/Sheet'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
+import { useSession } from '@/features/auth/SessionContext'
 import { useCategories } from '@/features/categories/useCategories'
 import { evictMovements } from '@/graphql/cache'
 import { getFirstErrorMessage } from '@/graphql/errors'
 import { endOfMonth, startOfMonth, todayIso } from '@/lib/dates'
+import { downloadBlob } from '@/lib/download'
+import {
+  buildMovementsPdf,
+  buildMovementsWorkbook,
+  exportFileName,
+  type ExportContext,
+} from './export'
 import { TransactionForm } from './TransactionForm'
 import { TransactionList } from './TransactionList'
 import { RemoveExpenseMutation, RemoveIncomeMutation } from './transactions.queries'
@@ -25,6 +33,7 @@ export function TransactionsPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { confirm, dialog } = useConfirm()
+  const { user } = useSession()
 
   const [scope, setScope] = useState<TransactionsScope>('ALL')
   const [from, setFrom] = useState(() => startOfMonth(todayIso()))
@@ -44,6 +53,8 @@ export function TransactionsPage() {
     createFromRoute,
   )
   const [removeError, setRemoveError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState<'xlsx' | 'pdf' | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   // /movimientos y sus rutas hijas renderizan el MISMO componente, así que al
   // navegar entre ellas React no lo remonta y el initializer de useState no
@@ -98,6 +109,33 @@ export function TransactionsPage() {
     }
   }
 
+  /** Exporta exactamente lo que la lista muestra con los filtros actuales. */
+  const handleExport = async (format: 'xlsx' | 'pdf') => {
+    const context: ExportContext = {
+      from,
+      to,
+      scopeLabel: SCOPES.find((option) => option.value === scope)?.label ?? 'Todos',
+      categoryName:
+        tree.find(({ category }) => category.id === categoryId)?.category.name ?? null,
+      baseCurrency: user?.baseCurrency ?? 'COP',
+    }
+    setExporting(format)
+    setExportError(null)
+    try {
+      const blob =
+        format === 'xlsx'
+          ? await buildMovementsWorkbook(transactions, context)
+          : await buildMovementsPdf(transactions, context)
+      downloadBlob(blob, exportFileName(context, format))
+    } catch {
+      setExportError('No se pudo generar el archivo. Inténtalo de nuevo.')
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  const canExport = !loading && !error && transactions.length > 0 && exporting === null
+
   const isFormOpen = editing !== null || creatingKind !== null
   const formKind = editing?.kind ?? creatingKind ?? 'EXPENSE'
 
@@ -127,6 +165,31 @@ export function TransactionsPage() {
         onCategoryChange={setCategoryId}
         categories={tree}
       />
+
+      <div className="mt-3 flex flex-wrap justify-end gap-2">
+        <Button
+          variant="secondary"
+          disabled={!canExport}
+          isLoading={exporting === 'xlsx'}
+          onClick={() => void handleExport('xlsx')}
+        >
+          Exportar a Excel
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={!canExport}
+          isLoading={exporting === 'pdf'}
+          onClick={() => void handleExport('pdf')}
+        >
+          Exportar a PDF
+        </Button>
+      </div>
+
+      {exportError && (
+        <div className="mt-4">
+          <ErrorState message={exportError} />
+        </div>
+      )}
 
       {removeError && (
         <div className="mt-4">
