@@ -225,7 +225,12 @@ function SidebarNav() {
         </div>
       )}
 
-      <nav aria-label="Principal" className="flex flex-1 flex-col px-3">
+      {/* min-h-0 + overflow: la sidebar mide lo que la ventana (h-dvh); sin
+          scroll, en ventanas bajas se cortaban los últimos ítems */}
+      <nav
+        aria-label="Principal"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-4"
+      >
         <ul className="flex flex-col gap-1">
           {items.map((item) => (
             <SidebarItem key={item.to} item={item} isCollapsed={isCollapsed} />
