@@ -398,7 +398,7 @@ function PurchaseHistory({ currency }: { currency: string }) {
             {purchases.slice(0, 10).map((purchase) => (
               <tr key={purchase.id}>
                 <td className="text-ink px-4 py-2.5">{purchase.article.name}</td>
-                <td className="text-ink-secondary whitespace-nowrap px-4 py-2.5">
+                <td className="text-ink-secondary px-4 py-2.5 whitespace-nowrap">
                   {formatDate(purchase.purchasedOn)}
                 </td>
                 <td className="text-ink-secondary px-4 py-2.5">
