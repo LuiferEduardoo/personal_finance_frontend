@@ -21,6 +21,14 @@ describe('toggleScope', () => {
     ])
     expect(allowedScopes(['ALL'])).toEqual([])
   })
+
+  it('ofrece los permisos de créditos', () => {
+    expect(allowedScopes(['LOANS_READ', 'LOANS_WRITE'])).toEqual([
+      'LOANS_READ',
+      'LOANS_WRITE',
+    ])
+    expect(scopeLabel('LOANS_READ')).toBe('Consultar créditos')
+  })
 })
 
 describe('API key presentation', () => {

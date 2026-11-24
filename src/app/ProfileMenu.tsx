@@ -72,6 +72,9 @@ export function ProfileMenu() {
           <MenuLink to="/presupuestos" onClick={close}>
             Presupuestos
           </MenuLink>
+          <MenuLink to="/creditos" onClick={close}>
+            Créditos
+          </MenuLink>
         </div>
 
         <p className="text-ink-muted px-3 pt-3 pb-1 text-[0.6875rem] font-semibold tracking-wider uppercase">

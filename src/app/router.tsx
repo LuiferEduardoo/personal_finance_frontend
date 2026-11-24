@@ -67,6 +67,16 @@ const BudgetsPage = lazy(() =>
     default: module.BudgetsPage,
   })),
 )
+const LoansPage = lazy(() =>
+  import('@/features/loans/LoansPage').then((module) => ({
+    default: module.LoansPage,
+  })),
+)
+const LoanDetailPage = lazy(() =>
+  import('@/features/loans/LoanDetailPage').then((module) => ({
+    default: module.LoanDetailPage,
+  })),
+)
 const SettingsPage = lazy(() =>
   import('@/features/settings/SettingsPage').then((module) => ({
     default: module.SettingsPage,
@@ -241,6 +251,22 @@ export const router = createBrowserRouter([
             element: (
               <Lazy>
                 <BudgetsPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/creditos',
+            element: (
+              <Lazy>
+                <LoansPage />
+              </Lazy>
+            ),
+          },
+          {
+            path: '/creditos/:id',
+            element: (
+              <Lazy>
+                <LoanDetailPage />
               </Lazy>
             ),
           },

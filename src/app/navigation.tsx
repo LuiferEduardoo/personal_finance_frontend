@@ -158,4 +158,15 @@ export const ORGANIZATION_ITEMS: NavItem[] = [
       </svg>
     ),
   },
+  {
+    to: '/creditos',
+    label: 'Créditos',
+    icon: (
+      <svg {...iconProps}>
+        <path d="M3 10 12 4l9 6" />
+        <path d="M5 10v8m4.67-8v8m4.66-8v8M19 10v8" />
+        <path d="M3 20h18" />
+      </svg>
+    ),
+  },
 ]
