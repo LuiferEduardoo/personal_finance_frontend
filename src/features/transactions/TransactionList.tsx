@@ -52,9 +52,7 @@ export function TransactionList({
               />
             </div>
             <div className="mt-2 flex gap-1">
-              {!transaction.installment && (
-                <RowAction onClick={() => onEdit(transaction)}>Editar</RowAction>
-              )}
+              <RowAction onClick={() => onEdit(transaction)}>Editar</RowAction>
               <RowAction onClick={() => onRemove(transaction)}>Eliminar</RowAction>
             </div>
           </li>
@@ -108,9 +106,7 @@ export function TransactionList({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1">
-                    {!transaction.installment && (
-                      <RowAction onClick={() => onEdit(transaction)}>Editar</RowAction>
-                    )}
+                    <RowAction onClick={() => onEdit(transaction)}>Editar</RowAction>
                     <RowAction onClick={() => onRemove(transaction)}>
                       Eliminar
                     </RowAction>

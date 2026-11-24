@@ -226,7 +226,9 @@ export function TransactionsPage() {
         onClose={closeForm}
         title={
           editing
-            ? 'Editar movimiento'
+            ? editing.installment
+              ? 'Editar compra a cuotas'
+              : 'Editar movimiento'
             : formKind === 'INCOME'
               ? 'Registrar ingreso'
               : 'Registrar gasto'

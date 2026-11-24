@@ -69,7 +69,14 @@ describe('conversión a Transaction', () => {
   it('conserva el detalle de una cuota', () => {
     const expense = {
       ...baseExpense,
-      plan: { installmentCount: 6, monthlyRate: 0.025, totalAmount: 3_245_000 },
+      plan: {
+        description: 'Portátil',
+        principalAmount: 3_000_000,
+        purchaseDate: '2026-07-15',
+        installmentCount: 6,
+        monthlyRate: 0.025,
+        totalAmount: 3_245_000,
+      },
       installment: {
         sequenceNumber: 2,
         principalAmount: 490_000,
@@ -82,6 +89,9 @@ describe('conversión a Transaction', () => {
       sequenceNumber: 2,
       installmentCount: 6,
       interestAmount: 50_000,
+      planDescription: 'Portátil',
+      planPrincipalAmount: 3_000_000,
+      purchaseDate: '2026-07-15',
     })
   })
 })

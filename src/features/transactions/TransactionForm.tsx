@@ -15,7 +15,11 @@ import { getFirstErrorMessage } from '@/graphql/errors'
 import { todayIso } from '@/lib/dates'
 import { formatAmount } from '@/lib/money'
 import { ExpenseItemsEditor } from './ExpenseItemsEditor'
-import { installmentPreview } from './installments'
+import {
+  installmentEditCredit,
+  installmentPreview,
+  installmentPurchaseDefaults,
+} from './installments'
 import {
   buildItemsInput,
   isRowComplete,
@@ -69,12 +73,17 @@ type TransactionFormProps = {
 export function TransactionForm({ kind, transaction, onDone }: TransactionFormProps) {
   const isIncome = kind === 'INCOME'
   const isEditing = transaction != null
+  // Editar cualquier cuota de una compra a cuotas edita la compra completa: el
+  // formulario parte del plan (descripción base, capital, fecha de compra).
+  const plan = !isIncome ? (transaction?.installment ?? null) : null
+  const planDefaults = plan ? installmentPurchaseDefaults(plan) : null
   const [formError, setFormError] = useState<string | null>(null)
 
   // Los ítems (solo gastos) viven fuera de RHF: son un array de objetos con su
-  // propia UI de selección de artículo.
+  // propia UI de selección de artículo. En una compra a cuotas los ítems solo
+  // dan el capital (no se guardan en las cuotas), así que se empieza sin ellos.
   const [rows, setRows] = useState<ItemRow[]>(() =>
-    isIncome ? [] : rowsFromItems(transaction?.items ?? []),
+    isIncome || plan ? [] : rowsFromItems(transaction?.items ?? []),
   )
 
   const { tree, loading: loadingCategories } = useCategories(kind)
@@ -97,16 +106,16 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      description: transaction?.description ?? '',
-      amount: transaction?.amount,
-      occurredOn: transaction?.occurredOn ?? todayIso(),
+      description: planDefaults?.description ?? transaction?.description ?? '',
+      amount: planDefaults?.amount ?? transaction?.amount,
+      occurredOn: planDefaults?.occurredOn ?? transaction?.occurredOn ?? todayIso(),
       categoryId: transaction?.categoryId ?? '',
       accountId: transaction?.accountId ?? '',
       counterparty: transaction?.counterparty ?? '',
       notes: transaction?.notes ?? '',
-      useInstallments: false,
-      installmentCount: 2,
-      monthlyInterestRatePercent: 0,
+      useInstallments: plan != null,
+      installmentCount: planDefaults?.installmentCount ?? 2,
+      monthlyInterestRatePercent: planDefaults?.monthlyInterestRatePercent ?? 0,
     },
   })
 
@@ -121,10 +130,17 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
     accounts.find((account) => account.id === watch('accountId')) ?? null
   const creditAvailable =
     !isIncome && selectedAccount && isCreditAccount(selectedAccount.type)
-      ? spendableAmount(selectedAccount)
+      ? plan
+        ? installmentEditCredit(
+            spendableAmount(selectedAccount),
+            selectedAccount.id === transaction?.accountId,
+            plan.totalAmount,
+          )
+        : spendableAmount(selectedAccount)
       : null
   const effectiveAmount = hasItems ? computedAmount : (watch('amount') ?? 0)
-  const useInstallments = !isIncome && !isEditing && watch('useInstallments')
+  const useInstallments =
+    plan != null || (!isIncome && !isEditing && watch('useInstallments'))
   const installmentCount = watch('installmentCount')
   const monthlyInterestRatePercent = watch('monthlyInterestRatePercent')
   const financing = installmentPreview(
@@ -193,7 +209,7 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
         ...commonBase,
         merchant: optional(values.counterparty),
         ...(hasItems ? { items: buildItemsInput(rows) } : { amount: values.amount }),
-        ...(values.useInstallments
+        ...(useInstallments
           ? {
               installmentCount: values.installmentCount,
               monthlyInterestRate: values.monthlyInterestRatePercent / 100,
@@ -204,6 +220,9 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
       const touchedProduct = rows.some(
         (row) => row.article.mode !== 'none' && row.article.type === 'PRODUCT',
       )
+      // En una compra a cuotas cambian varias filas (cuotas creadas, borradas o
+      // movidas de mes), el saldo de una o dos cuentas y los presupuestos de
+      // varios meses: `evictMovements` cubre listas, saldos y presupuestos.
       const update = (cache: ApolloCache<unknown>) => {
         evictMovements(cache)
         if (touchedProduct) evictInventory(cache)
@@ -235,8 +254,24 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+      {plan && (
+        <div
+          role="note"
+          className="border-warning/40 bg-warning/10 text-ink rounded-lg border px-3 py-2.5 text-sm"
+        >
+          <p className="font-medium">
+            Editas la compra completa ({plan.installmentCount} cuotas)
+          </p>
+          <p className="text-ink-secondary mt-0.5 text-xs">
+            Los cambios se aplican a todas las cuotas y se recalcula la tabla. El
+            importe es el capital (sin intereses) y la fecha, la de compra. Puede
+            cambiar el saldo de la cuenta.
+          </p>
+        </div>
+      )}
+
       <Field
-        label="Descripción"
+        label={plan ? 'Descripción (sin el número de cuota)' : 'Descripción'}
         placeholder={isIncome ? 'Pago nómina julio' : 'Mercado semana'}
         error={errors.description?.message}
         {...register('description')}
@@ -253,7 +288,7 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
         </div>
       ) : (
         <Field
-          label="Importe"
+          label={plan ? 'Capital (sin intereses)' : 'Importe'}
           type="number"
           inputMode="decimal"
           step="any"
@@ -266,26 +301,30 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
         />
       )}
 
-      {!isIncome && !isEditing && (
+      {!isIncome && (!isEditing || plan) && (
         <section className="border-border bg-surface-sunken rounded-xl border p-3 sm:p-4">
-          <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4">
-            <span>
-              <span className="text-ink block text-sm font-medium">
-                Pagar por cuotas
+          {plan ? (
+            <p className="text-ink text-sm font-medium">Cuotas</p>
+          ) : (
+            <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4">
+              <span>
+                <span className="text-ink block text-sm font-medium">
+                  Pagar por cuotas
+                </span>
+                <span className="text-ink-muted mt-0.5 block text-xs">
+                  Distribuye esta compra en los próximos meses.
+                </span>
               </span>
-              <span className="text-ink-muted mt-0.5 block text-xs">
-                Distribuye esta compra en los próximos meses.
-              </span>
-            </span>
-            <input
-              type="checkbox"
-              className="accent-ink size-5 shrink-0"
-              {...register('useInstallments')}
-            />
-          </label>
+              <input
+                type="checkbox"
+                className="accent-ink size-5 shrink-0"
+                {...register('useInstallments')}
+              />
+            </label>
+          )}
 
           {useInstallments && (
-            <div className="border-border mt-3 border-t pt-3">
+            <div className={plan ? 'mt-3' : 'border-border mt-3 border-t pt-3'}>
               <div className="grid grid-cols-2 gap-3">
                 <Field
                   label="Número de cuotas"
@@ -330,7 +369,7 @@ export function TransactionForm({ kind, transaction, onDone }: TransactionFormPr
       )}
 
       <Field
-        label="Fecha"
+        label={plan ? 'Fecha de compra' : 'Fecha'}
         type="date"
         error={errors.occurredOn?.message}
         {...register('occurredOn')}

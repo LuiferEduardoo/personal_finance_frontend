@@ -23,6 +23,9 @@ export const ExpenseFields = graphql(`
     planId
     installmentId
     plan {
+      description
+      principalAmount
+      purchaseDate
       installmentCount
       monthlyRate
       totalAmount

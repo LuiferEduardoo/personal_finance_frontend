@@ -42,3 +42,52 @@ export function installmentPreview(
     totalInterest: fromCents(totalCents - principalCents),
   }
 }
+
+/** Lo que el formulario necesita de una cuota para editar su compra completa. */
+type InstallmentPurchase = {
+  planDescription: string
+  planPrincipalAmount: number
+  purchaseDate: string
+  installmentCount: number
+  monthlyRate: number
+}
+
+export type InstallmentPurchaseDefaults = {
+  description: string
+  amount: number
+  occurredOn: string
+  installmentCount: number
+  monthlyInterestRatePercent: number
+}
+
+/**
+ * Valores iniciales al editar una compra a cuotas: `updateExpense` sobre
+ * cualquiera de sus cuotas edita el plan entero, así que el formulario parte
+ * del plan (descripción base sin " (n/N)", capital sin intereses y fecha de
+ * compra), no de la cuota.
+ */
+export function installmentPurchaseDefaults(
+  installment: InstallmentPurchase,
+): InstallmentPurchaseDefaults {
+  return {
+    description: installment.planDescription,
+    amount: installment.planPrincipalAmount,
+    occurredOn: installment.purchaseDate,
+    installmentCount: installment.installmentCount,
+    // 0.025 * 100 = 2.5000000000000004: se redondea para no mostrar ruido de float.
+    monthlyInterestRatePercent: Math.round(installment.monthlyRate * 100 * 1e6) / 1e6,
+  }
+}
+
+/**
+ * Cupo que puede usar la compra editada. El backend revierte primero el total
+ * financiado de la cuenta anterior y luego valida el nuevo, así que si la
+ * cuenta no cambia el total actual vuelve a estar disponible.
+ */
+export function installmentEditCredit(
+  available: number,
+  sameAccount: boolean,
+  currentTotal: number,
+): number {
+  return sameAccount ? available + currentTotal : available
+}

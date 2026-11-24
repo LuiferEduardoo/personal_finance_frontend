@@ -56,6 +56,10 @@ export type Transaction = {
     dueDate: string
     monthlyRate: number
     totalAmount: number
+    /** Datos de la compra completa: lo que se edita desde cualquiera de sus cuotas. */
+    planDescription: string
+    planPrincipalAmount: number
+    purchaseDate: string
   } | null
 }
 
@@ -89,6 +93,9 @@ export function expenseToTransaction(expense: Expense): Transaction {
             dueDate: expense.installment.dueDate,
             monthlyRate: expense.plan.monthlyRate,
             totalAmount: expense.plan.totalAmount,
+            planDescription: expense.plan.description,
+            planPrincipalAmount: expense.plan.principalAmount,
+            purchaseDate: expense.plan.purchaseDate,
           }
         : null,
     items: (expense.items ?? []).map((item) => ({

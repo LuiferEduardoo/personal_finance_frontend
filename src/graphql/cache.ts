@@ -25,7 +25,8 @@ function evictFields(cache: ApolloCache<unknown>, fields: string[]): void {
 
 /**
  * Un gasto o ingreso afecta: las listas de movimientos, el dashboard, las dos
- * inflaciones, el saldo de la cuenta asociada y lo gastado de los presupuestos.
+ * inflaciones, el saldo de la cuenta asociada (lista y detalle) y lo gastado de
+ * los presupuestos.
  */
 export function evictMovements(cache: ApolloCache<unknown>): void {
   evictFields(cache, [
@@ -34,6 +35,7 @@ export function evictMovements(cache: ApolloCache<unknown>): void {
     'expenseInflation',
     'articleInflation',
     'accounts',
+    'account',
     'categoryBudgets',
   ])
 }
@@ -59,6 +61,15 @@ export function evictInventory(cache: ApolloCache<unknown>): void {
 
 export function evictAccounts(cache: ApolloCache<unknown>): void {
   evictFields(cache, ['accounts'])
+}
+
+/**
+ * Créditos: lista y detalle, más el saldo de las cuentas (el desembolso suma a
+ * la cuenta y borrar el crédito lo revierte). Pagar una cuota o abonar a
+ * capital además registra un gasto → combinar con `evictMovements`.
+ */
+export function evictLoans(cache: ApolloCache<unknown>): void {
+  evictFields(cache, ['loans', 'loan', 'accounts', 'account'])
 }
 
 export function evictAccountTransfers(cache: ApolloCache<unknown>): void {
