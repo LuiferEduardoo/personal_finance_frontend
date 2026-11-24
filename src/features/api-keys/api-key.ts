@@ -29,6 +29,8 @@ export const SCOPE_GROUPS: ReadonlyArray<{
       { value: 'INVOICES_WRITE', label: 'Procesar facturas' },
       { value: 'LOANS_READ', label: 'Consultar créditos' },
       { value: 'LOANS_WRITE', label: 'Gestionar créditos, pagos y abonos' },
+      { value: 'NOTIFICATIONS_READ', label: 'Consultar notificaciones' },
+      { value: 'NOTIFICATIONS_WRITE', label: 'Marcar y borrar notificaciones' },
     ],
   },
   {

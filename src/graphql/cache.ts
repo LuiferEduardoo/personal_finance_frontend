@@ -25,8 +25,10 @@ function evictFields(cache: ApolloCache<unknown>, fields: string[]): void {
 
 /**
  * Un gasto o ingreso afecta: las listas de movimientos, el dashboard, las dos
- * inflaciones, el saldo de la cuenta asociada (lista y detalle) y lo gastado de
- * los presupuestos.
+ * inflaciones, el saldo de la cuenta asociada (lista y detalle), lo gastado de
+ * los presupuestos y las notificaciones (pasar un presupuesto crea una; el
+ * backend lo hace en segundo plano, así que el sondeo de la campana recoge las
+ * que lleguen después).
  */
 export function evictMovements(cache: ApolloCache<unknown>): void {
   evictFields(cache, [
@@ -37,6 +39,8 @@ export function evictMovements(cache: ApolloCache<unknown>): void {
     'accounts',
     'account',
     'categoryBudgets',
+    'unreadNotificationsCount',
+    'notifications',
   ])
 }
 

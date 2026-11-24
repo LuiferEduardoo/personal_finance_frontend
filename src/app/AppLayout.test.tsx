@@ -1,8 +1,10 @@
+import { MockedProvider } from '@apollo/client/testing'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { SessionContext, type SessionValue } from '@/features/auth/SessionContext'
+import { UnreadNotificationsCountQuery } from '@/features/notifications/notifications.queries'
 import { AppLayout } from './AppLayout'
 
 const session: SessionValue = {
@@ -22,19 +24,30 @@ const session: SessionValue = {
   logout: vi.fn(),
 }
 
+// La campana del header pide el contador de no leídas.
+const mocks = [
+  {
+    request: { query: UnreadNotificationsCountQuery },
+    result: { data: { unreadNotificationsCount: 0 } },
+    maxUsageCount: Number.POSITIVE_INFINITY,
+  },
+]
+
 function renderLayout(initialEntry = '/') {
   return render(
-    <SessionContext value={session}>
-      <MemoryRouter initialEntries={[initialEntry]}>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route index element={<p>Contenido</p>} />
-            <Route path="categorias" element={<p>Categorías</p>} />
-            <Route path="inversiones" element={<p>Cartera</p>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    </SessionContext>,
+    <MockedProvider mocks={mocks}>
+      <SessionContext value={session}>
+        <MemoryRouter initialEntries={[initialEntry]}>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route index element={<p>Contenido</p>} />
+              <Route path="categorias" element={<p>Categorías</p>} />
+              <Route path="inversiones" element={<p>Cartera</p>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </SessionContext>
+    </MockedProvider>,
   )
 }
 

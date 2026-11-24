@@ -101,6 +101,12 @@ type Documents = {
     "\n  mutation SyncMailConnection($id: ID!) {\n    syncMailConnection(id: $id)\n  }\n": typeof types.SyncMailConnectionDocument,
     "\n  mutation RetryMailMessage($id: ID!) {\n    retryMailMessage(id: $id) {\n      id\n      status\n      error\n      expenseId\n      operationsRecorded\n      updatedAt\n    }\n  }\n": typeof types.RetryMailMessageDocument,
     "\n  query MailInvestmentAccounts {\n    investmentAccounts(includeInactive: false) {\n      id\n      name\n      broker\n      currency\n    }\n  }\n": typeof types.MailInvestmentAccountsDocument,
+    "\n  fragment NotificationFields on Notification {\n    id\n    type\n    title\n    body\n    link\n    read\n    readAt\n    createdAt\n  }\n": typeof types.NotificationFieldsFragmentDoc,
+    "\n  query UnreadNotificationsCount {\n    unreadNotificationsCount\n  }\n": typeof types.UnreadNotificationsCountDocument,
+    "\n  query Notifications($filter: NotificationsFilterInput) {\n    notifications(filter: $filter) {\n      ...NotificationFields\n    }\n  }\n": typeof types.NotificationsDocument,
+    "\n  mutation MarkNotificationRead($id: ID!) {\n    markNotificationRead(id: $id) {\n      ...NotificationFields\n    }\n  }\n": typeof types.MarkNotificationReadDocument,
+    "\n  mutation MarkAllNotificationsRead {\n    markAllNotificationsRead\n  }\n": typeof types.MarkAllNotificationsReadDocument,
+    "\n  mutation RemoveNotification($id: ID!) {\n    removeNotification(id: $id)\n  }\n": typeof types.RemoveNotificationDocument,
     "\n  query Products($search: String, $includeInactive: Boolean) {\n    products(search: $search, includeInactive: $includeInactive) {\n      id\n      name\n      brand\n      packageSize\n      unit\n      barcode\n      isConsumable\n      isActive\n      inStock\n      notes\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n": typeof types.ProductsDocument,
     "\n  query ProductStats {\n    productStats {\n      articleId\n      name\n      closedCycles\n      avgDaysLasted\n      minDaysLasted\n      maxDaysLasted\n      avgUnitPrice\n      lastPurchasedOn\n      estimatedDepletionDate\n    }\n  }\n": typeof types.ProductStatsDocument,
     "\n  query ProductPurchases($articleId: ID) {\n    productPurchases(articleId: $articleId) {\n      id\n      purchasedOn\n      quantity\n      unitPrice\n      totalPrice\n      store\n      expenseId\n      article {\n        id\n        name\n      }\n    }\n  }\n": typeof types.ProductPurchasesDocument,
@@ -216,6 +222,12 @@ const documents: Documents = {
     "\n  mutation SyncMailConnection($id: ID!) {\n    syncMailConnection(id: $id)\n  }\n": types.SyncMailConnectionDocument,
     "\n  mutation RetryMailMessage($id: ID!) {\n    retryMailMessage(id: $id) {\n      id\n      status\n      error\n      expenseId\n      operationsRecorded\n      updatedAt\n    }\n  }\n": types.RetryMailMessageDocument,
     "\n  query MailInvestmentAccounts {\n    investmentAccounts(includeInactive: false) {\n      id\n      name\n      broker\n      currency\n    }\n  }\n": types.MailInvestmentAccountsDocument,
+    "\n  fragment NotificationFields on Notification {\n    id\n    type\n    title\n    body\n    link\n    read\n    readAt\n    createdAt\n  }\n": types.NotificationFieldsFragmentDoc,
+    "\n  query UnreadNotificationsCount {\n    unreadNotificationsCount\n  }\n": types.UnreadNotificationsCountDocument,
+    "\n  query Notifications($filter: NotificationsFilterInput) {\n    notifications(filter: $filter) {\n      ...NotificationFields\n    }\n  }\n": types.NotificationsDocument,
+    "\n  mutation MarkNotificationRead($id: ID!) {\n    markNotificationRead(id: $id) {\n      ...NotificationFields\n    }\n  }\n": types.MarkNotificationReadDocument,
+    "\n  mutation MarkAllNotificationsRead {\n    markAllNotificationsRead\n  }\n": types.MarkAllNotificationsReadDocument,
+    "\n  mutation RemoveNotification($id: ID!) {\n    removeNotification(id: $id)\n  }\n": types.RemoveNotificationDocument,
     "\n  query Products($search: String, $includeInactive: Boolean) {\n    products(search: $search, includeInactive: $includeInactive) {\n      id\n      name\n      brand\n      packageSize\n      unit\n      barcode\n      isConsumable\n      isActive\n      inStock\n      notes\n      category {\n        id\n        name\n        icon\n      }\n    }\n  }\n": types.ProductsDocument,
     "\n  query ProductStats {\n    productStats {\n      articleId\n      name\n      closedCycles\n      avgDaysLasted\n      minDaysLasted\n      maxDaysLasted\n      avgUnitPrice\n      lastPurchasedOn\n      estimatedDepletionDate\n    }\n  }\n": types.ProductStatsDocument,
     "\n  query ProductPurchases($articleId: ID) {\n    productPurchases(articleId: $articleId) {\n      id\n      purchasedOn\n      quantity\n      unitPrice\n      totalPrice\n      store\n      expenseId\n      article {\n        id\n        name\n      }\n    }\n  }\n": types.ProductPurchasesDocument,
@@ -606,6 +618,30 @@ export function graphql(source: "\n  mutation RetryMailMessage($id: ID!) {\n    
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query MailInvestmentAccounts {\n    investmentAccounts(includeInactive: false) {\n      id\n      name\n      broker\n      currency\n    }\n  }\n"): (typeof documents)["\n  query MailInvestmentAccounts {\n    investmentAccounts(includeInactive: false) {\n      id\n      name\n      broker\n      currency\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment NotificationFields on Notification {\n    id\n    type\n    title\n    body\n    link\n    read\n    readAt\n    createdAt\n  }\n"): (typeof documents)["\n  fragment NotificationFields on Notification {\n    id\n    type\n    title\n    body\n    link\n    read\n    readAt\n    createdAt\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query UnreadNotificationsCount {\n    unreadNotificationsCount\n  }\n"): (typeof documents)["\n  query UnreadNotificationsCount {\n    unreadNotificationsCount\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query Notifications($filter: NotificationsFilterInput) {\n    notifications(filter: $filter) {\n      ...NotificationFields\n    }\n  }\n"): (typeof documents)["\n  query Notifications($filter: NotificationsFilterInput) {\n    notifications(filter: $filter) {\n      ...NotificationFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation MarkNotificationRead($id: ID!) {\n    markNotificationRead(id: $id) {\n      ...NotificationFields\n    }\n  }\n"): (typeof documents)["\n  mutation MarkNotificationRead($id: ID!) {\n    markNotificationRead(id: $id) {\n      ...NotificationFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation MarkAllNotificationsRead {\n    markAllNotificationsRead\n  }\n"): (typeof documents)["\n  mutation MarkAllNotificationsRead {\n    markAllNotificationsRead\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RemoveNotification($id: ID!) {\n    removeNotification(id: $id)\n  }\n"): (typeof documents)["\n  mutation RemoveNotification($id: ID!) {\n    removeNotification(id: $id)\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

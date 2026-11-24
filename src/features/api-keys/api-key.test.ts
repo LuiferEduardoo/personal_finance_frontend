@@ -29,6 +29,15 @@ describe('toggleScope', () => {
     ])
     expect(scopeLabel('LOANS_READ')).toBe('Consultar créditos')
   })
+
+  it('ofrece los permisos de notificaciones', () => {
+    expect(allowedScopes(['NOTIFICATIONS_READ', 'NOTIFICATIONS_WRITE'])).toEqual([
+      'NOTIFICATIONS_READ',
+      'NOTIFICATIONS_WRITE',
+    ])
+    expect(scopeLabel('NOTIFICATIONS_READ')).toBe('Consultar notificaciones')
+    expect(scopeLabel('NOTIFICATIONS_WRITE')).toBe('Marcar y borrar notificaciones')
+  })
 })
 
 describe('API key presentation', () => {

@@ -6,6 +6,7 @@ import {
   ORGANIZATION_ITEMS,
   type NavItem,
 } from './navigation'
+import { NotificationBell } from '@/features/notifications/NotificationBell'
 import { ProfileMenu } from './ProfileMenu'
 
 function PlusIcon({ className }: { className: string }) {
@@ -99,7 +100,8 @@ export function AppLayout() {
           <div className="min-w-0 flex-1">
             <WorkspaceSwitch />
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <NotificationBell />
             <ProfileMenu />
           </div>
         </header>

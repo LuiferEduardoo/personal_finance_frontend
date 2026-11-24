@@ -1,4 +1,10 @@
-import { ApolloClient, HttpLink, InMemoryCache, from } from '@apollo/client'
+import {
+  ApolloClient,
+  HttpLink,
+  InMemoryCache,
+  from,
+  type Reference,
+} from '@apollo/client'
 import { setContext } from '@apollo/client/link/context'
 import { onError } from '@apollo/client/link/error'
 import { Observable } from '@apollo/client/utilities'
@@ -105,6 +111,26 @@ export const apolloClient = new ApolloClient({
           accounts: { keyArgs: ['includeInactive'] },
           recurringExpenses: { keyArgs: ['includeInactive'] },
           categoryBudgets: { keyArgs: ['month'] },
+          // Paginación por offset dentro de `filter`: una entrada por
+          // `unreadOnly`, y "Ver más" concatena. Offset 0 (abrir el panel,
+          // refetch) reemplaza la lista para no arrastrar páginas viejas.
+          notifications: {
+            keyArgs: ['filter', ['unreadOnly']],
+            merge(
+              existing: readonly Reference[] = [],
+              incoming: readonly Reference[],
+              { args },
+            ) {
+              const filter = args?.filter as { offset?: number | null } | undefined
+              const offset = filter?.offset ?? 0
+              if (offset === 0) return incoming
+              const head = existing.slice(0, offset)
+              // Si llegaron notificaciones nuevas entre páginas, el offset se
+              // corre y alguna se repetiría.
+              const seen = new Set(head.map((ref) => ref.__ref))
+              return [...head, ...incoming.filter((ref) => !seen.has(ref.__ref))]
+            },
+          },
         },
       },
       // El id es el del presupuesto, pero `spent`/`remaining` dependen del mes:
