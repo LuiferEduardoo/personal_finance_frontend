@@ -22,6 +22,7 @@ export const ExpenseFields = graphql(`
     recurrence
     planId
     installmentId
+    loanId
     plan {
       description
       principalAmount

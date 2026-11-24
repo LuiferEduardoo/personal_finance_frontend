@@ -19,6 +19,7 @@ const base: Transaction = {
   accountName: 'Débito',
   items: [],
   installment: null,
+  loanId: null,
 }
 
 describe('exportación de movimientos', () => {

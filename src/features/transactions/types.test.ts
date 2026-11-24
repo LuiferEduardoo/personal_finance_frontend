@@ -66,6 +66,13 @@ describe('conversión a Transaction', () => {
     expect(transaction.categoryIcon).toBeNull()
   })
 
+  it('marca los pagos de crédito y deja null el resto', () => {
+    expect(expenseToTransaction(baseExpense).loanId).toBeNull()
+    expect(expenseToTransaction({ ...baseExpense, loanId: 'loan-1' }).loanId).toBe(
+      'loan-1',
+    )
+  })
+
   it('conserva el detalle de una cuota', () => {
     const expense = {
       ...baseExpense,

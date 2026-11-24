@@ -61,6 +61,8 @@ export type Transaction = {
     planPrincipalAmount: number
     purchaseDate: string
   } | null
+  /** Pago de cuota o abono de un crédito: solo se gestiona desde el crédito. */
+  loanId: string | null
 }
 
 export function directionOf(kind: Transaction['kind']): MoneyDirection {
@@ -109,6 +111,7 @@ export function expenseToTransaction(expense: Expense): Transaction {
       discount: item.discount,
       subtotal: item.subtotal,
     })),
+    loanId: expense.loanId ?? null,
   }
 }
 
@@ -131,5 +134,6 @@ export function incomeToTransaction(income: Income): Transaction {
     // Los ingresos no llevan ítems.
     items: [],
     installment: null,
+    loanId: null,
   }
 }

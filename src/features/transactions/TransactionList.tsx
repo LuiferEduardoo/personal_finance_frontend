@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { Money } from '@/components/Money'
 import { formatDate } from '@/lib/dates'
 import { directionOf, type Transaction } from './types'
@@ -52,8 +53,11 @@ export function TransactionList({
               />
             </div>
             <div className="mt-2 flex gap-1">
-              <RowAction onClick={() => onEdit(transaction)}>Editar</RowAction>
-              <RowAction onClick={() => onRemove(transaction)}>Eliminar</RowAction>
+              <RowActions
+                transaction={transaction}
+                onEdit={onEdit}
+                onRemove={onRemove}
+              />
             </div>
           </li>
         ))}
@@ -106,10 +110,11 @@ export function TransactionList({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1">
-                    <RowAction onClick={() => onEdit(transaction)}>Editar</RowAction>
-                    <RowAction onClick={() => onRemove(transaction)}>
-                      Eliminar
-                    </RowAction>
+                    <RowActions
+                      transaction={transaction}
+                      onEdit={onEdit}
+                      onRemove={onRemove}
+                    />
                   </div>
                 </td>
               </tr>
@@ -149,6 +154,33 @@ function Th({
   className?: string
 }) {
   return <th className={`px-4 py-2.5 text-xs font-medium ${className}`}>{children}</th>
+}
+
+/**
+ * Los pagos de un crédito no se editan ni borran aquí (el backend lo rechaza:
+ * descuadraría la tabla del crédito); se enlaza al crédito en su lugar.
+ */
+function RowActions({
+  transaction,
+  onEdit,
+  onRemove,
+}: { transaction: Transaction } & Pick<TransactionListProps, 'onEdit' | 'onRemove'>) {
+  if (transaction.loanId) {
+    return (
+      <Link
+        to={`/creditos/${transaction.loanId}`}
+        className="text-ink-secondary hover:bg-surface-sunken inline-flex min-h-11 items-center rounded-lg px-3 text-sm"
+      >
+        Ver crédito
+      </Link>
+    )
+  }
+  return (
+    <>
+      <RowAction onClick={() => onEdit(transaction)}>Editar</RowAction>
+      <RowAction onClick={() => onRemove(transaction)}>Eliminar</RowAction>
+    </>
+  )
 }
 
 function RowAction({
